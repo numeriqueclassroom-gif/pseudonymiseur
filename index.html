@@ -1,0 +1,1310 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pseudonymiseur</title>
+<style>
+:root{
+  --paper:#f3efe6; --card:#fbf9f4; --ink:#17150f; --muted:#6b665a; --line:#d9d2c2;
+  --stamp:#c2331b; --stamp-soft:#f6dcd4; --ok:#2e6b3d; --ok-soft:#dcebdc; --warn:#a86a00; --warn-soft:#f6e8c8;
+  --bar:#17150f; --chip-id:#e9e1f6; --chip-adr:#dcebf2; --chip-mail:#f4e1d6; --chip-cus:#e3eedb; --chip-keep:#ece8de;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#151410; --card:#1d1b16; --ink:#ece6d8; --muted:#a49d8c; --line:#38342a;
+    --stamp:#ef6a4f; --stamp-soft:#3a1f18; --ok:#7fc58e; --ok-soft:#1d3322; --warn:#e3b04f; --warn-soft:#3a2e14;
+    --bar:#ece6d8; --chip-id:#2d2640; --chip-adr:#1e3038; --chip-mail:#3a281e; --chip-cus:#24331f; --chip-keep:#2a2720;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#151410; --card:#1d1b16; --ink:#ece6d8; --muted:#a49d8c; --line:#38342a;
+  --stamp:#ef6a4f; --stamp-soft:#3a1f18; --ok:#7fc58e; --ok-soft:#1d3322; --warn:#e3b04f; --warn-soft:#3a2e14;
+  --bar:#ece6d8; --chip-id:#2d2640; --chip-adr:#1e3038; --chip-mail:#3a281e; --chip-cus:#24331f; --chip-keep:#2a2720;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  background-image:repeating-linear-gradient(0deg,transparent 0 31px,color-mix(in srgb,var(--line) 35%,transparent) 31px 32px)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header.top{border-bottom:3px solid var(--ink);background:var(--paper);position:sticky;top:0;z-index:5}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;padding-bottom:12px;flex-wrap:wrap}
+.offline{font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1.5px solid var(--ok);color:var(--ok);padding:7px 10px;border-radius:3px;display:inline-flex;gap:8px;align-items:center}
+.offline::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.toggles{display:flex;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:3px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);font:600 12px var(--mono);padding:6px 10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.linkbtn{font:600 12px var(--mono);border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:6px 10px;border-radius:3px;cursor:pointer;text-decoration:none}
+.linkbtn:hover{background:var(--ink);color:var(--paper)}
+.hero{padding:42px 0 26px;position:relative}
+.hero h1{font-family:var(--serif);font-weight:700;font-size:clamp(40px,7vw,78px);line-height:.95;margin:0;letter-spacing:-.02em}
+.hero h1 .r{background:var(--bar);color:transparent;border-radius:2px;padding:0 .08em;user-select:none;animation:redact 3.2s ease-in-out infinite alternate}
+@keyframes redact{0%,45%{background:transparent;color:var(--ink)}55%,100%{background:var(--bar);color:transparent}}
+@media (prefers-reduced-motion: reduce){.hero h1 .r{animation:none}}
+.hero p{max-width:700px;font-size:17px;color:var(--muted);margin:16px 0 0}
+.stamp{position:absolute;right:0;top:38px;transform:rotate(-8deg);border:3px solid var(--stamp);color:var(--stamp);font:800 15px/1 var(--mono);letter-spacing:.14em;padding:10px 14px;border-radius:4px;text-transform:uppercase;opacity:.85}
+@media (max-width:760px){.stamp{display:none}}
+section.step{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;margin:0 0 22px;box-shadow:5px 5px 0 var(--ink);scroll-margin-top:70px}
+.step>h2{margin:0;display:flex;gap:14px;align-items:baseline;padding:16px 20px;border-bottom:1.5px solid var(--line);font-family:var(--serif);font-size:24px;flex-wrap:wrap}
+.step>h2 .n{font:800 13px var(--mono);background:var(--ink);color:var(--paper);padding:4px 8px;border-radius:2px;transform:translateY(-3px)}
+.step>h2 .sub{font:400 14px var(--sans);color:var(--muted)}
+.step .body{padding:18px 20px 20px}
+.step.locked{opacity:.45;pointer-events:none}
+.step h3{font-family:var(--serif);font-size:18px;margin:0 0 10px}
+.drop{border:2px dashed var(--muted);border-radius:4px;padding:28px 16px;text-align:center;cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--stamp);background:var(--stamp-soft)}
+.drop strong{font-size:17px;display:block}
+.drop small{color:var(--muted)}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:14px 0}
+.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
+textarea{width:100%;min-height:90px;font:13px var(--mono);background:var(--paper);color:var(--ink);border:1.5px solid var(--line);border-radius:3px;padding:10px;resize:vertical}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{font:700 14px var(--sans);border:1.5px solid var(--ink);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:3px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.sm{font-size:12px;padding:5px 9px}
+.btn.primary{background:var(--stamp);border-color:var(--stamp);color:#fff;font-size:17px;padding:13px 22px;box-shadow:4px 4px 0 var(--ink)}
+.btn.primary:hover{transform:translate(1px,1px);box-shadow:3px 3px 0 var(--ink)}
+.btn.accent{border-color:var(--stamp);color:var(--stamp)}
+.btn.accent:hover{background:var(--stamp);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.status{font:13px var(--mono);color:var(--muted);margin-top:12px}
+.status b{color:var(--ink)}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
+label.f span.h,.hint{font-weight:400;color:var(--muted);font-size:12px}
+input[type=text],input[type=number],select{font:14px var(--mono);background:var(--paper);color:var(--ink);border:1.5px solid var(--line);border-radius:3px;padding:7px 9px;max-width:100%}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--stamp);outline-offset:1px}
+.profile{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1.5px dashed var(--line);border-radius:3px;padding:10px 12px;margin-bottom:14px;font-size:14px}
+.profile b{font-family:var(--mono)}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.col{border:1.5px solid var(--line);border-radius:3px;padding:9px 10px;background:var(--paper);display:flex;flex-direction:column;gap:6px;min-width:0}
+.col.r-id{background:var(--chip-id)}.col.r-adr{background:var(--chip-adr)}.col.r-mail{background:var(--chip-mail)}.col.r-cus{background:var(--chip-cus)}
+.col .hd{display:flex;justify-content:space-between;gap:8px;font:700 14px var(--mono);align-items:center}
+.col .hd .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font:600 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:3px 5px;border-radius:2px;border:1px solid currentColor;color:var(--muted);white-space:nowrap}
+.tag.c{color:var(--warn)}.tag.p,.tag.m{color:var(--ok)}
+.col .smp{font:12px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.col select,.col input{width:100%;font-size:13px}
+.param{display:flex;flex-direction:column;gap:5px;border-top:1px dashed color-mix(in srgb,var(--ink) 25%,transparent);padding-top:7px}
+.param .mini{display:flex;gap:5px}
+.param .mini input{flex:1;min-width:0}
+.param .prev{font:12px var(--mono);color:var(--muted)}
+.param .prev b{color:var(--ink)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:12px}
+.legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--line);vertical-align:-2px;margin-right:5px}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.seed{display:flex;gap:6px}
+.seed input{flex:1;min-width:0}
+.go{display:flex;justify-content:center;margin:6px 0 28px}
+.checks{display:grid;gap:8px;margin-bottom:18px}
+.ck{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:3px;border:1.5px solid var(--line)}
+.ck>div{flex:1;min-width:0}
+.ck .i{font:800 13px var(--mono);min-width:26px;text-align:center;padding:2px 0;border-radius:2px}
+.ck.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}.ck.ok .i{color:var(--ok)}
+.ck.warn{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}.ck.warn .i{color:var(--warn)}
+.ck.bad{background:var(--stamp-soft);border-color:var(--stamp)}.ck.bad .i{color:var(--stamp)}
+.ck small{display:block;color:var(--muted)}
+.ck .btn{margin-top:6px}
+details.leaks{margin-top:6px}
+details.leaks summary{cursor:pointer;font-weight:600}
+.leaklist{max-height:220px;overflow:auto;font:12px var(--mono);margin-top:6px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
+.kpi{border:1.5px solid var(--ink);border-radius:3px;padding:10px 12px;background:var(--paper)}
+.kpi b{font:800 28px/1 var(--serif);display:block}
+.kpi span{font-size:12px;color:var(--muted)}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tablewrap{overflow:auto;border:1.5px solid var(--ink);border-radius:3px;max-height:560px;background:var(--paper)}
+table{border-collapse:collapse;font:12.5px var(--mono);width:max-content;min-width:100%}
+th{position:sticky;top:0;background:var(--ink);color:var(--paper);text-align:left;padding:7px 10px;z-index:1;font-weight:700}
+td{border-bottom:1px solid var(--line);padding:6px 10px;vertical-align:top;max-width:300px}
+tr:nth-child(even) td{background:color-mix(in srgb,var(--line) 22%,transparent)}
+td .o{display:block;color:var(--muted);text-decoration:line-through;text-decoration-color:var(--stamp);font-size:11px}
+.hideorig td .o{display:none}
+td.num{color:var(--muted)}
+.pager{display:flex;gap:8px;align-items:center;font:13px var(--mono)}
+.exports{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:20px}
+.exp{border:1.5px solid var(--ink);border-radius:3px;padding:12px;background:var(--paper);display:flex;flex-direction:column;gap:8px}
+.exp p{margin:0;font-size:13px;color:var(--muted)}
+.exp.key{border-color:var(--stamp);border-style:dashed}
+.banktiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:20px}
+.bt{border:1.5px solid var(--ink);border-radius:3px;padding:10px 12px;background:var(--paper);display:flex;flex-direction:column;gap:4px;min-width:0}
+.bt b{font:800 24px/1 var(--serif)}
+.bt .nm{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.bt .meta{font:11px var(--mono);color:var(--muted)}
+.bt .acts{display:flex;gap:6px;margin-top:4px}
+.bt.user{border-style:dashed}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.pane{border:1.5px solid var(--line);border-radius:3px;padding:14px;background:var(--paper);display:flex;flex-direction:column;gap:10px;min-width:0}
+.pane .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pane .grid .full{grid-column:1/-1}
+.pane textarea{background:var(--card)}
+#promptOut{min-height:220px}
+.report{font:13px var(--mono)}
+.kit{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.profiles{font:13px var(--mono);margin-top:10px;display:grid;gap:6px}
+.profiles div{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.viewlist{max-height:180px;overflow:auto;font:12px var(--mono);border:1px solid var(--line);padding:6px 8px;border-radius:3px;background:var(--card);margin-top:6px}
+footer{border-top:3px solid var(--ink);margin-top:30px;padding:18px 0 40px;font-size:13px;color:var(--muted)}
+footer p{max-width:820px;margin:6px 0}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:3px;font:600 14px var(--sans);transition:.25s;z-index:9;max-width:90vw}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.err{color:var(--stamp);font-weight:600}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <span class="offline" data-i18n="offline">100 % hors ligne · rien ne quitte cet ordinateur</span>
+  <div class="toggles">
+    <a class="linkbtn" href="#s5" data-i18n="gobank">Banque</a>
+    <div class="seg" role="group" aria-label="Langue">
+      <button data-lang="fr" aria-pressed="true">FR</button><button data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <div class="hero">
+    <h1 data-i18n-html="title">Pseudo<span class="r">nymi</span>seur</h1>
+    <p data-i18n="lede">Chaque personne reçoit une identité fictive complète et cohérente. Rien n'est mélangé entre les lignes : aucun nom, aucune adresse, aucun mail réel n'est réattribué à quelqu'un d'autre.</p>
+    <div class="stamp" data-i18n="stamp">Pseudonymisé</div>
+  </div>
+
+  <section class="step" id="s1">
+    <h2><span class="n">01</span><span data-i18n="s1">Charger le fichier</span></h2>
+    <div class="body">
+      <div class="drop" id="drop" tabindex="0" role="button">
+        <strong data-i18n="drop">Déposez votre fichier .xlsx ou .csv ici</strong>
+        <small data-i18n="dropsub">ou cliquez pour le choisir · lecture locale, sans envoi</small>
+        <input type="file" id="file" accept=".xlsx,.csv,.tsv,.txt" hidden>
+      </div>
+      <div class="or" data-i18n="or">ou collez directement depuis Excel (Ctrl+A, Ctrl+C dans la feuille)</div>
+      <textarea id="paste" data-i18n-ph="pasteph" placeholder="Collez ici, avec la ligne d'en-têtes…"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="pasteBtn" data-i18n="pastebtn">Utiliser le texte collé</button>
+        <label class="f hidden" id="sheetWrap"><span data-i18n="sheet">Feuille</span><select id="sheet"></select></label>
+        <label class="f"><span data-i18n="hrow">Ligne des en-têtes</span><input type="number" id="hrow" value="1" min="1" style="width:90px"></label>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </section>
+
+  <section class="step locked" id="s2">
+    <h2><span class="n">02</span><span data-i18n="s2">Rôle de chaque colonne</span><span class="sub" data-i18n="s2sub">détecté automatiquement, à vérifier</span></h2>
+    <div class="body">
+      <div class="profile" id="profile"></div>
+      <div class="legend">
+        <span><i style="background:var(--chip-id)"></i><span data-i18n="lg1">identité</span></span>
+        <span><i style="background:var(--chip-adr)"></i><span data-i18n="lg2">adresse</span></span>
+        <span><i style="background:var(--chip-mail)"></i><span data-i18n="lg3">mail</span></span>
+        <span><i style="background:var(--chip-cus)"></i><span data-i18n="lg5">personnalisé</span></span>
+        <span><i style="background:var(--chip-keep)"></i><span data-i18n="lg4">conservé tel quel</span></span>
+      </div>
+      <div class="cols" id="cols"></div>
+    </div>
+  </section>
+
+  <section class="step locked" id="s3">
+    <h2><span class="n">03</span><span data-i18n="s3">Réglages</span></h2>
+    <div class="body settings">
+      <label class="f"><span data-i18n="flav">Style des identités fictives</span>
+        <select id="flavour"><option value="fr" data-i18n="flfr">Français</option><option value="en" data-i18n="flen">British (pour le fun)</option></select>
+        <span class="h" data-i18n="flavh">Noms, prénoms, rues et mails changent de style ; CP et ville suivent les réglages.</span></label>
+      <label class="f"><span data-i18n="depts">Plage des codes postaux fictifs</span>
+        <span class="seed"><input type="number" id="cpmin" value="98500" min="1000" max="99999"><input type="number" id="cpmax" value="98900" min="1000" max="99999"></span>
+        <span class="h" data-i18n="deptsh">Un code par ville réelle, toujours le même pour la même ville.</span></label>
+      <label class="f"><span data-i18n="villel">Ville affichée</span>
+        <input type="text" id="villetxt" value="VILLE">
+        <span class="h" data-i18n="villeh">Même valeur pour tout le monde. Laissez vide pour des villes inventées.</span></label>
+      <label class="f"><span data-i18n="seedl">Graine</span>
+        <span class="seed"><input type="text" id="seed"><button class="btn" id="dice" title="⟳" type="button">⟳</button></span>
+        <span class="h" data-i18n="seedh">Même fichier + même graine = mêmes pseudonymes.</span></label>
+    </div>
+  </section>
+
+  <div class="go"><button class="btn primary" id="run" disabled data-i18n="run">Pseudonymiser</button></div>
+
+  <section class="step hidden" id="s4">
+    <h2><span class="n">04</span><span data-i18n="s4">Résultat et contrôles</span></h2>
+    <div class="body">
+      <div class="kpis" id="kpis"></div>
+      <div class="checks" id="checks"></div>
+      <div class="tools">
+        <div class="row">
+          <input type="text" id="filter" data-i18n-ph="filter" placeholder="Filtrer…" style="min-width:200px">
+          <label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="showOrig" checked><span data-i18n="showorig">Afficher les valeurs réelles (barrées)</span></label>
+        </div>
+        <div class="pager"><button class="btn" id="prev">‹</button><span id="pg"></span><button class="btn" id="next">›</button></div>
+      </div>
+      <div class="tablewrap" id="tw"><table id="tbl"></table></div>
+      <div class="exports">
+        <div class="exp"><b data-i18n="e1">Fichier pseudonymisé</b><p data-i18n="e1p">Excel, toutes les colonnes, même ordre.</p><button class="btn" id="dlx">.xlsx</button></div>
+        <div class="exp"><b data-i18n="e2">Version CSV</b><p data-i18n="e2p">Séparateur point-virgule, UTF-8.</p><button class="btn" id="dlc">.csv</button></div>
+        <div class="exp"><b data-i18n="e3">Copier pour Excel</b><p data-i18n="e3p">Puis Ctrl+V dans une feuille vide.</p><button class="btn" id="cp" data-i18n="copy">Copier</button></div>
+        <div class="exp key"><b data-i18n="e4">Table de correspondance</b><p data-i18n="e4p">Clé de ré-identification : à stocker à part, jamais avec le fichier pseudonymisé.</p><button class="btn" id="dlm">.xlsx</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="s5">
+    <h2><span class="n">05</span><span data-i18n="s5">Banque de données factices</span><span class="sub" data-i18n="s5sub">ce que l'appli pioche pour inventer</span></h2>
+    <div class="body">
+      <div class="banktiles" id="banktiles"></div>
+      <div class="two">
+        <div class="pane">
+          <h3 data-i18n="b1">1. Décrire la liste voulue</h3>
+          <div class="grid">
+            <label class="f"><span data-i18n="bkind">Type de liste</span><select id="bkind"></select></label>
+            <label class="f"><span data-i18n="bcount">Combien ?</span><input type="number" id="bcount" value="150" min="5" max="2000"></label>
+            <label class="f full" id="bnameWrap"><span data-i18n="bname">Nom de la liste</span><input type="text" id="bname" data-i18n-ph="bnameph" placeholder="ex. Établissements fictifs"></label>
+            <label class="f"><span data-i18n="bstyle">Style</span><select id="bstyle"><option value="fr" data-i18n="stfr">Français</option><option value="en" data-i18n="sten">Britannique</option><option value="mix" data-i18n="stmix">Les deux</option></select></label>
+            <label class="f"><span data-i18n="bex">Exemple de forme (fictif)</span><input type="text" id="bex" data-i18n-ph="bexph" placeholder="ex. Lycée des Trois Collines"></label>
+            <label class="f full"><span data-i18n="bctx">Précisions (facultatif)</span><input type="text" id="bctx" data-i18n-ph="bctxph" placeholder="ex. collèges et lycées, noms à thème provençal"></label>
+          </div>
+          <button class="btn accent" id="bgen" data-i18n="bgen">Générer le prompt</button>
+          <textarea id="promptOut" readonly data-i18n-ph="promptph" placeholder="Le prompt apparaîtra ici."></textarea>
+          <div class="row"><button class="btn sm" id="bcopy" data-i18n="bcopy">Copier le prompt</button><span class="hint" data-i18n="bcopyh">À coller dans l'assistant IA de votre choix. Aucune donnée réelle n'y figure.</span></div>
+        </div>
+        <div class="pane">
+          <h3 data-i18n="b2">2. Coller la réponse obtenue</h3>
+          <textarea id="banswer" style="min-height:300px" data-i18n-ph="bansph" placeholder="Collez ici la liste renvoyée (une valeur par ligne)…"></textarea>
+          <button class="btn primary" id="badd" style="font-size:15px;padding:10px 16px" data-i18n="badd">Ajouter à la banque</button>
+          <div class="report" id="breport"></div>
+        </div>
+      </div>
+      <h3 style="margin-top:22px" data-i18n="kit">Mon kit (banque + profils)</h3>
+      <p class="hint" data-i18n="kith">Enregistré automatiquement dans ce navigateur. Pour le garder en sécurité ou l'emporter sur un autre ordinateur, exportez-le, ou téléchargez une copie de l'appli qui l'embarque.</p>
+      <div class="kit">
+        <button class="btn" id="kexp" data-i18n="kexp">Exporter le kit (.json)</button>
+        <button class="btn" id="kimp" data-i18n="kimp">Importer un kit</button><input type="file" id="kfile" accept=".json" hidden>
+        <button class="btn accent" id="kapp" data-i18n="kapp">Télécharger l'appli avec mon kit intégré</button>
+      </div>
+      <div class="profiles" id="profiles"></div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">
+  <p data-i18n="f1">Pseudonymiser n'est pas anonymiser : les colonnes conservées (discipline, grade, établissement…) peuvent encore permettre de reconnaître quelqu'un. Le fichier produit reste une donnée personnelle au sens du RGPD.</p>
+  <p data-i18n="f2">Cette page ne charge aucune ressource externe et n'envoie rien : vous pouvez couper le réseau avant de l'ouvrir.</p>
+</div></footer>
+<div class="toast" id="toast"></div>
+<script type="application/json" id="kit">{}</script>
+<script>
+"use strict";
+const PRISTINE="<!doctype html>\n"+document.documentElement.outerHTML;
+/* ===================== I18N ===================== */
+const I18N = {
+fr:{offline:"100 % hors ligne · rien ne quitte cet ordinateur",gobank:"Banque",title:'Pseudo<span class="r">nymi</span>seur',
+lede:"Chaque personne reçoit une identité fictive complète et cohérente. Rien n'est mélangé entre les lignes : aucun nom, aucune adresse, aucun mail réel n'est réattribué à quelqu'un d'autre.",
+stamp:"Pseudonymisé",s1:"Charger le fichier",drop:"Déposez votre fichier .xlsx ou .csv ici",dropsub:"ou cliquez pour le choisir · lecture locale, sans envoi",
+or:"ou collez directement depuis Excel (Ctrl+A, Ctrl+C dans la feuille)",pasteph:"Collez ici, avec la ligne d'en-têtes…",pastebtn:"Utiliser le texte collé",
+sheet:"Feuille",hrow:"Ligne des en-têtes",s2:"Rôle de chaque colonne",s2sub:"détecté automatiquement, à vérifier",
+lg1:"identité",lg2:"adresse",lg3:"mail",lg4:"conservé tel quel",lg5:"personnalisé",
+s3:"Réglages",flav:"Style des identités fictives",flfr:"Français",flen:"British (pour le fun)",flavh:"Noms, prénoms, rues et mails changent de style ; CP et ville suivent les réglages.",
+depts:"Plage des codes postaux fictifs",deptsh:"Un code par ville réelle, toujours le même pour la même ville.",villel:"Ville affichée",villeh:"Même valeur pour tout le monde. Laissez vide pour des villes inventées.",
+seedl:"Graine",seedh:"Même fichier + même graine = mêmes pseudonymes.",run:"Pseudonymiser",s4:"Résultat et contrôles",filter:"Filtrer…",
+showorig:"Afficher les valeurs réelles (barrées)",e1:"Fichier pseudonymisé",e1p:"Excel, toutes les colonnes, même ordre.",e2:"Version CSV",e2p:"Séparateur point-virgule, UTF-8.",
+e3:"Copier pour Excel",e3p:"Puis Ctrl+V dans une feuille vide.",copy:"Copier",e4:"Table de correspondance",e4p:"Clé de ré-identification : à stocker à part, jamais avec le fichier pseudonymisé.",
+s5:"Banque de données factices",s5sub:"ce que l'appli pioche pour inventer",b1:"1. Décrire la liste voulue",bkind:"Type de liste",bcount:"Combien ?",bname:"Nom de la liste",bnameph:"ex. Établissements fictifs",
+bstyle:"Style",stfr:"Français",sten:"Britannique",stmix:"Les deux",bex:"Exemple de forme (fictif)",bexph:"ex. Lycée des Trois Collines",bctx:"Précisions (facultatif)",bctxph:"ex. collèges et lycées, noms à thème provençal",
+bgen:"Générer le prompt",promptph:"Le prompt apparaîtra ici.",bcopy:"Copier le prompt",bcopyh:"À coller dans l'assistant IA de votre choix. Aucune donnée réelle n'y figure.",
+b2:"2. Coller la réponse obtenue",bansph:"Collez ici la liste renvoyée (une valeur par ligne)…",badd:"Ajouter à la banque",
+kit:"Mon kit (banque + profils)",kith:"Enregistré automatiquement dans ce navigateur. Pour le garder en sécurité ou l'emporter sur un autre ordinateur, exportez-le, ou téléchargez une copie de l'appli qui l'embarque.",
+kexp:"Exporter le kit (.json)",kimp:"Importer un kit",kapp:"Télécharger l'appli avec mon kit intégré",
+f1:"Pseudonymiser n'est pas anonymiser : les colonnes conservées (discipline, grade, établissement…) peuvent encore permettre de reconnaître quelqu'un. Le fichier produit reste une donnée personnelle au sens du RGPD.",
+f2:"Cette page ne charge aucune ressource externe et n'envoie rien : vous pouvez couper le réseau avant de l'ouvrir.",
+roles:{keep:"Conserver tel quel",civ:"Civilité (sert au genre)",nom:"Nom de famille",prenom:"Prénom",code:"Code / identifiant (modèle)",tel:"Téléphone",date:"Date (décalée)",
+ rue:"Nom de rue (voie)",num:"Numéro dans la voie",suite:"Suite du nom de rue",compl:"Complément d'adresse",cp:"Code postal",ville:"Ville",mail:"Mail",
+ liste:"Tirer dans une liste de la banque",fixe:"Valeur fixe",vider:"Vider la colonne",texte:"Texte libre : remplacer les noms"},
+rgroups:{id:"Identité",adr:"Adresse",mail:"Contact",cus:"Personnalisé",keep:"Ne pas toucher"},
+src:{h:"intitulé",c:"contenu",p:"profil",m:"mémorisé"},
+srct:{h:"Reconnu grâce à l'intitulé de la colonne",c:"Deviné d'après le contenu : à vérifier",p:"Repris du profil enregistré pour ces colonnes",m:"Repris de vos choix précédents pour cet intitulé"},
+p_tpl:"Modèle",p_tplh:"# chiffre · A lettre maj. · a minuscule · * lettre ou chiffre · \\ devant un caractère pour le garder tel quel. Vide : chaque valeur garde sa forme.",
+p_ex:"Exemple fictif → modèle",p_exbtn:"→",p_infer:"Déduire de la colonne",p_prev:"aperçu",p_days:"Écart maximal (jours)",p_list:"Liste",p_newlist:"＋ Créer une liste pour cette colonne…",p_fixed:"Valeur",
+p_items:n=>`${n} éléments`,p_listneed:(h,n)=>`${h} : ${n} valeurs distinctes`,
+prof_known:(n,d)=>`Profil reconnu : <b>${n}</b> (enregistré le ${d}). Les rôles et réglages ont été repris.`,
+prof_new:"Nouveau jeu de colonnes : détection automatique d'après les intitulés et le contenu.",
+prof_save:"Mémoriser ces choix pour les prochains fichiers",prof_reset:"Relancer la détection",
+loaded:(n,c,s)=>`<b>${n}</b> lignes · <b>${c}</b> colonnes${s?` · feuille <b>${s}</b>`:""}`,
+reading:"Lecture…",badfile:"Fichier illisible : ",empty:"Aucune donnée trouvée.",
+k_rows:"lignes traitées",k_nom:"noms remplacés",k_pre:"prénoms remplacés",k_city:"codes postaux fictifs",k_mail:"mails réécrits",k_other:"autres valeurs remplacées",
+c_nom:(a,b)=>`${a} noms réels → ${b} noms fictifs distincts`,c_nom2:"Aucun nom fictif n'existe parmi les noms réels du fichier : pas de mélange possible.",
+c_pre:n=>`${n} prénoms remplacés, accordés à la civilité`,c_pre2:(x)=>x?`${x} prénom(s) fictif(s) coïncide(nt) avec un prénom réel du fichier (réserve épuisée).`:"Aucun prénom fictif ne figure parmi les prénoms réels du fichier.",
+c_code:(n,h)=>`${h} : ${n} codes fictifs, tous uniques et différents des vrais`,c_code_bad:(h,n)=>`${h} : ${n} code(s) ne respectent pas le modèle`,
+c_tel:n=>`${n} numéros de téléphone fictifs (indicatif conservé, reste inventé)`,
+c_date:(n,u)=>`${n} dates décalées${u?` ; ${u} valeur(s) non reconnue(s) comme date, transformée(s) en gardant leur forme`:""}`,
+c_adr:(v,r)=>`${v} codes postaux et ${r} rues fictives ; mêmes adresses réelles → mêmes adresses fictives`,c_adr2:(a,b,v)=>`CP fictifs entre ${a} et ${b}${v?`, ville « ${v} » pour tous`:", villes inventées"}.`,
+c_mail:(n,u)=>`${n} mails réécrits, domaines conservés, ${u?"tous uniques":"doublons détectés"}`,c_mail2:n=>n?`${n} mail(s) sans nom reconnaissable : remplacés par un pseudo du même style.`:"Tous les mails ont été reconstruits à partir de la nouvelle identité.",
+c_list:(h,n,name)=>`${h} : ${n} valeurs tirées de « ${name} »`,c_listshort:(h,name,need,have)=>`${h} : la liste « ${name} » est trop courte (${have} disponibles pour ${need} valeurs). Des numéros ont été ajoutés pour rester unique.`,
+c_texte:(h,n)=>`${h} : ${n} mention(s) de noms, prénoms, mails ou codes remplacée(s) dans le texte`,
+c_pool:(what,n)=>`Réserve de ${what} un peu juste : ${n} valeur(s) obtenue(s) par combinaison ou réutilisation.`,c_poolbtn:"Enrichir la banque avec un prompt",
+c_same:n=>n?`${n} cellule(s) pseudonymisée(s) identique(s) à l'original`:"Aucune cellule pseudonymisée n'est restée identique à l'original",
+c_leak:n=>n?`${n} cellule(s) contiennent encore un nom réel (ou le prénom réel de la personne)`:"Aucun nom ni prénom réel retrouvé dans le fichier produit",
+c_leak2:"Souvent dans des colonnes conservées (établissement, commentaire…). Pensez au rôle « Texte libre ». À vérifier :",
+c_noroles:"Aucune colonne à pseudonymiser : choisissez au moins un rôle.",
+leakline:(r,c,v,t)=>`ligne ${r} · ${c} · « ${v} » contient ${t}`,
+page:(a,b,n)=>`${a}–${b} / ${n}`,copied:"Copié : collez dans Excel avec Ctrl+V",pcopied:"Prompt copié : collez-le dans votre assistant IA",keywarn:"Cette table permet de retrouver les vraies identités. La télécharger quand même ?",
+m_type:"Type",m_real:"Valeur réelle",m_fake:"Valeur fictive",mt:{nom:"Nom",prenom:"Prénom",code:"Code",tel:"Téléphone",date:"Date",ville:"CP + ville",rue:"Rue",compl:"Complément",mail:"Mail",liste:"Liste"},
+kinds:{nom:"Noms de famille",prenomF:"Prénoms féminins",prenomM:"Prénoms masculins",rue:"Noms de rues",ville:"Noms de villes",custom:"Liste personnalisée"},
+builtin:"intégrée",added:n=>`+ ${n} ajoutés`,userlist:"ajoutée",view:"voir",del:"suppr.",delq:n=>`Supprimer la liste « ${n} » ?`,
+rep_ok:(a,d,r)=>`<b>${a}</b> ajouté(s) · ${d} doublon(s) ignoré(s)${r?` · <span class="err">${r} écarté(s) car présents dans le fichier chargé</span>`:""}`,
+rep_none:"Rien à ajouter : collez d'abord la réponse.",rep_name:"Donnez un nom à la liste personnalisée.",
+kit_saved:"Kit exporté",kit_imported:(l,p)=>`Kit importé : ${l} liste(s), ${p} profil(s)`,kit_bad:"Ce fichier n'est pas un kit valide.",app_dl:"Copie de l'appli téléchargée avec votre kit",
+profs:"Profils enregistrés",noprof:"Aucun profil enregistré pour l'instant.",profq:n=>`Oublier le profil « ${n} » ?`,
+autoName:"liste",
+prompt:{stc:{fr:"en français, réaliste pour une administration française",en:"en anglais britannique, réaliste",mix:"mélange de français et d'anglais britannique"},intro:"Tu es un générateur de données fictives. Ces données serviront à pseudonymiser un fichier administratif : elles doivent être plausibles mais ne correspondre à aucune personne, adresse ou structure réelle.",
+ task:(n,d)=>`Tâche : génère exactement ${n} ${d}.`,style:s=>`Style : ${s}.`,ctx:c=>`Précisions : ${c}.`,ex:e=>`Exemple de forme attendue (fictif) : ${e}`,
+ rules:"Règles :",r1:"une valeur par ligne ;",r2:"pas de numérotation, pas de puces, pas de guillemets, aucun commentaire ;",r3:"aucune célébrité, aucune personne, entreprise ou établissement réel identifiable ;",r4:"aucun doublon ;",
+ r5:"écris avec les majuscules et les accents habituels (ex. « Hélène », « Le Goff »).",out:"Réponds uniquement avec la liste, dans un seul bloc de code.",
+ desc:{nom:"noms de famille",prenomF:"prénoms féminins",prenomM:"prénoms masculins",rue:"noms de voies complets (type de voie compris, sans numéro ni code postal)",ville:"noms de communes imaginaires",custom:h=>`valeurs pour une colonne intitulée « ${h} »`},
+ st:{fr:"à consonance française variée, comme dans une administration française (régions de France, outre-mer et origines étrangères courantes en France)",en:"britannique (Angleterre, Écosse, pays de Galles, Irlande du Nord), avec la diversité du Royaume-Uni d'aujourd'hui",mix:"mélange équilibré de français et de britannique"},
+ kr:{nom:"inclus quelques noms composés avec trait d'union, à particule (« de », « Le ») ou avec apostrophe (« N'Diaye »), sans dépasser 10 % ;",prenomF:"inclus quelques prénoms composés (« Anne-Laure ») ;",prenomM:"inclus quelques prénoms composés (« Jean-Marc ») ;",
+  rue:"commence par le type de voie (Rue, Avenue, Chemin, Impasse, Allée, Route, Place…) ; jamais de numéro ;",ville:"aucune commune qui existe réellement ; mélange noms simples, noms composés avec trait d'union et « Saint- » ;",custom:"respecte la forme de l'exemple s'il est fourni ;"}}},
+en:{offline:"100% offline · nothing leaves this computer",gobank:"Bank",title:'Pseudo<span class="r">nymi</span>ser',
+lede:"Every person gets a complete, consistent fictional identity. Nothing is shuffled between rows: no real name, address or e-mail is ever handed to someone else.",
+stamp:"Pseudonymised",s1:"Load your file",drop:"Drop your .xlsx or .csv file here",dropsub:"or click to choose it · read locally, never uploaded",
+or:"or paste straight from Excel (Ctrl+A, Ctrl+C in the sheet)",pasteph:"Paste here, header row included…",pastebtn:"Use pasted text",
+sheet:"Sheet",hrow:"Header row",s2:"Role of each column",s2sub:"detected automatically, please check",
+lg1:"identity",lg2:"address",lg3:"e-mail",lg4:"kept as is",lg5:"custom",
+s3:"Settings",flav:"Flavour of fake identities",flfr:"French",flen:"British (for fun)",flavh:"Names, streets and e-mails change style; postcode and town follow the settings.",
+depts:"Fake postcode range",deptsh:"One code per real town, always the same for the same town.",villel:"Town shown",villeh:"Same value for everyone. Leave empty for invented towns.",
+seedl:"Seed",seedh:"Same file + same seed = same pseudonyms.",run:"Pseudonymise",s4:"Result and checks",filter:"Filter…",
+showorig:"Show real values (struck through)",e1:"Pseudonymised file",e1p:"Excel, every column, same order.",e2:"CSV version",e2p:"Semicolon separated, UTF-8.",
+e3:"Copy for Excel",e3p:"Then Ctrl+V into an empty sheet.",copy:"Copy",e4:"Lookup table",e4p:"Re-identification key: store it separately, never alongside the pseudonymised file.",
+s5:"Bank of fake data",s5sub:"what the app draws from to invent",b1:"1. Describe the list you need",bkind:"List type",bcount:"How many?",bname:"List name",bnameph:"e.g. Fictional schools",
+bstyle:"Style",stfr:"French",sten:"British",stmix:"Both",bex:"Sample of the format (fake)",bexph:"e.g. Three Hills Academy",bctx:"Extra details (optional)",bctxph:"e.g. secondary schools, nature-themed names",
+bgen:"Build the prompt",promptph:"The prompt will appear here.",bcopy:"Copy the prompt",bcopyh:"Paste it into the AI assistant of your choice. It contains no real data.",
+b2:"2. Paste the answer",bansph:"Paste the returned list here (one value per line)…",badd:"Add to the bank",
+kit:"My kit (bank + profiles)",kith:"Saved automatically in this browser. To keep it safe or take it to another computer, export it, or download a copy of the app with it built in.",
+kexp:"Export kit (.json)",kimp:"Import a kit",kapp:"Download the app with my kit built in",
+f1:"Pseudonymisation is not anonymisation: kept columns (subject, grade, school…) may still let someone be recognised. The output is still personal data under GDPR.",
+f2:"This page loads no external resource and sends nothing: you can switch off the network before opening it.",
+roles:{keep:"Keep as is",civ:"Title (gives gender)",nom:"Surname",prenom:"First name",code:"Code / ID (pattern)",tel:"Phone",date:"Date (shifted)",
+ rue:"Street name",num:"House number",suite:"Street name (cont.)",compl:"Address line",cp:"Postcode",ville:"Town",mail:"E-mail",
+ liste:"Pick from a bank list",fixe:"Fixed value",vider:"Clear the column",texte:"Free text: replace names"},
+rgroups:{id:"Identity",adr:"Address",mail:"Contact",cus:"Custom",keep:"Leave alone"},
+src:{h:"header",c:"content",p:"profile",m:"remembered"},
+srct:{h:"Recognised from the column header",c:"Guessed from the content: please check",p:"Taken from the profile saved for these columns",m:"Taken from your earlier choice for this header"},
+p_tpl:"Pattern",p_tplh:"# digit · A capital · a lower-case · * letter or digit · \\ before a character keeps it as is. Empty: each value keeps its own shape.",
+p_ex:"Fake sample → pattern",p_exbtn:"→",p_infer:"Infer from the column",p_prev:"preview",p_days:"Maximum shift (days)",p_list:"List",p_newlist:"＋ Create a list for this column…",p_fixed:"Value",
+p_items:n=>`${n} items`,p_listneed:(h,n)=>`${h}: ${n} distinct values`,
+prof_known:(n,d)=>`Profile recognised: <b>${n}</b> (saved ${d}). Roles and settings restored.`,
+prof_new:"New set of columns: detected automatically from headers and content.",
+prof_save:"Remember these choices for future files",prof_reset:"Run detection again",
+loaded:(n,c,s)=>`<b>${n}</b> rows · <b>${c}</b> columns${s?` · sheet <b>${s}</b>`:""}`,
+reading:"Reading…",badfile:"Unreadable file: ",empty:"No data found.",
+k_rows:"rows processed",k_nom:"surnames replaced",k_pre:"first names replaced",k_city:"fake postcodes",k_mail:"e-mails rewritten",k_other:"other values replaced",
+c_nom:(a,b)=>`${a} real surnames → ${b} distinct fake surnames`,c_nom2:"No fake surname exists among the real surnames in the file: no shuffling possible.",
+c_pre:n=>`${n} first names replaced, matching the title`,c_pre2:(x)=>x?`${x} fake first name(s) also appear among real first names (pool ran out).`:"No fake first name appears among the real first names.",
+c_code:(n,h)=>`${h}: ${n} fake codes, all unique and different from the real ones`,c_code_bad:(h,n)=>`${h}: ${n} code(s) don't match the pattern`,
+c_tel:n=>`${n} fake phone numbers (prefix kept, rest invented)`,
+c_date:(n,u)=>`${n} dates shifted${u?`; ${u} value(s) not recognised as dates, transformed keeping their shape`:""}`,
+c_adr:(v,r)=>`${v} fake postcodes and ${r} fake streets; same real address → same fake address`,c_adr2:(a,b,v)=>`Fake postcodes between ${a} and ${b}${v?`, town “${v}” for everyone`:", invented towns"}.`,
+c_mail:(n,u)=>`${n} e-mails rewritten, domains kept, ${u?"all unique":"duplicates found"}`,c_mail2:n=>n?`${n} e-mail(s) with no recognisable name: replaced with a handle in the same style.`:"Every e-mail was rebuilt from the new identity.",
+c_list:(h,n,name)=>`${h}: ${n} values drawn from “${name}”`,c_listshort:(h,name,need,have)=>`${h}: list “${name}” is too short (${have} available for ${need} values). Numbers were appended to keep values unique.`,
+c_texte:(h,n)=>`${h}: ${n} mention(s) of names, e-mails or codes replaced in the text`,
+c_pool:(what,n)=>`The ${what} pool is running low: ${n} value(s) made by combining or reusing.`,c_poolbtn:"Top up the bank with a prompt",
+c_same:n=>n?`${n} pseudonymised cell(s) identical to the original`:"No pseudonymised cell is identical to the original",
+c_leak:n=>n?`${n} cell(s) still contain a real surname (or the person's real first name)`:"No real surname or first name found in the output",
+c_leak2:"Usually in kept columns (school, comments…). Consider the “Free text” role. Worth checking:",
+c_noroles:"No column to pseudonymise: pick at least one role.",
+leakline:(r,c,v,t)=>`row ${r} · ${c} · “${v}” contains ${t}`,
+page:(a,b,n)=>`${a}–${b} / ${n}`,copied:"Copied: paste into Excel with Ctrl+V",pcopied:"Prompt copied: paste it into your AI assistant",keywarn:"This table can reveal the real identities. Download it anyway?",
+m_type:"Type",m_real:"Real value",m_fake:"Fake value",mt:{nom:"Surname",prenom:"First name",code:"Code",tel:"Phone",date:"Date",ville:"Postcode + town",rue:"Street",compl:"Address line",mail:"E-mail",liste:"List"},
+kinds:{nom:"Surnames",prenomF:"Female first names",prenomM:"Male first names",rue:"Street names",ville:"Town names",custom:"Custom list"},
+builtin:"built in",added:n=>`+ ${n} added`,userlist:"added",view:"view",del:"delete",delq:n=>`Delete the list “${n}”?`,
+rep_ok:(a,d,r)=>`<b>${a}</b> added · ${d} duplicate(s) skipped${r?` · <span class="err">${r} rejected because they appear in the loaded file</span>`:""}`,
+rep_none:"Nothing to add: paste the answer first.",rep_name:"Give the custom list a name.",
+kit_saved:"Kit exported",kit_imported:(l,p)=>`Kit imported: ${l} list(s), ${p} profile(s)`,kit_bad:"This file is not a valid kit.",app_dl:"Copy of the app downloaded with your kit",
+profs:"Saved profiles",noprof:"No saved profile yet.",profq:n=>`Forget the profile “${n}”?`,
+autoName:"list",
+prompt:{stc:{fr:"in French, realistic for French public administration",en:"in British English, realistic",mix:"a mix of French and British English"},intro:"You are a fake-data generator. This data will be used to pseudonymise an administrative file: it must be plausible but must not match any real person, address or organisation.",
+ task:(n,d)=>`Task: generate exactly ${n} ${d}.`,style:s=>`Style: ${s}.`,ctx:c=>`Details: ${c}.`,ex:e=>`Sample of the expected format (fake): ${e}`,
+ rules:"Rules:",r1:"one value per line;",r2:"no numbering, no bullets, no quotation marks, no comments;",r3:"no celebrities, no identifiable real person, company or school;",r4:"no duplicates;",
+ r5:"use normal capitals and accents (e.g. “Hélène”, “O'Brien”).",out:"Reply with the list only, in a single code block.",
+ desc:{nom:"surnames",prenomF:"female first names",prenomM:"male first names",rue:"full street names (street type included, no house number or postcode)",ville:"imaginary town names",custom:h=>`values for a column headed “${h}”`},
+ st:{fr:"varied French-sounding, as found in French public administration (French regions, overseas territories and immigrant backgrounds common in France)",en:"British (England, Scotland, Wales, Northern Ireland), reflecting today's diverse UK",mix:"an even mix of French and British"},
+ kr:{nom:"include a few double-barrelled names, names with a particle (“de”, “Le”) or an apostrophe (“O'Brien”), no more than 10%;",prenomF:"include a few hyphenated names (“Mary-Kate”);",prenomM:"include a few hyphenated names (“John-Paul”);",
+  rue:"French style: start with the street type (Rue, Avenue, Chemin…); British style: end with it (Lane, Road, Close…); never a house number;",ville:"no town that really exists; mix single words, hyphenated names and “Saint-” / “-on-Sea” style names;",custom:"follow the sample format if one is given;"}}}
+};
+let LANG="fr"; const t=k=>I18N[LANG][k];
+const sp=s=>s.trim().split(/\s+/);
+const POOLS={
+fr:{
+ noms:sp(`Aubanel Aillaud Alibert Amiel Anglade Arène Arnaudet Astier Audouard Augier Autran Baille Balestra Barbaroux Bardin Barthélemy Baudoin Bayle Béraud Bérenger Bertin Besson Blachère Bonfils Bonnefoy Bourrel Brémond Brunel Cabassut Caillol Camoin Capelle Carbonel Cauvin Chabaud Chabert Chaix Chapuis Chauvet Clavel Constans Coulomb Coutelier Daumas Delage Delorme Deluy Dolle Dorgal Ducasse Dufresne Duprat Escoffier Esménard Estienne Eymard Fabregat Faraut Féraud Fiquet Flamand Fouque Gachon Galland Gasquet Gastaldi Gavarry Gilly Giraudeau Gondran Goudard Granier Grimaud Guigou Guiran Imbert Jourdan Julliard Laugier Lautier Layet Lombard Magnan Maillet Malaussène Marcellin Mariani Mathéron Maunier Mazet Méric Monier Montagnier Nègre Orsini Pagès Paoli Pastorelli Pélissier Peyron Poncet Portal Pourcel Quilici Raybaud Rebuffel Rémusat Ribot Rigaud Roubaud Rougier Sabatier Sauvaire Seguin Signoret Silvy Tardieu Taxil Teisseire Toesca Trabuc Vachier Valette Vernet Vial Abgrall Bescond Cadiou Goasguen Guivarc'h Jaouen Kerjean Le_Bras Le_Floch Le_Goff Le_Meur Morvan Quéméner Riou Corre Gourvès Baradat Bergeron Cazenave Darrigrand Etcheverry Haramboure Irigoyen Laborde Lacoste Larralde Uhart Ybarra Zubiri Albertini Bartoli Cristofari Filippi Leca Luciani Mattei Nicolai Susini Tomasi Agostini Bellini Caruso Colombo Fontana Galli Lombardi Marino Moretti Pellegrini Ricci Rinaldi Santoro Vitale Alvarez Blanco Cabrera Castillo Delgado Domínguez Fuentes Herrera Iglesias Jiménez Lozano Medina Muñoz Peña Ramos Rubio Soler Torres Vega Almeida Barbosa Carvalho Correia Gomes Lopes Marques Mendes Nunes Pinto Ribeiro Rocha Sousa Teixeira Vieira Abdelli Belkacem Benhamou Bennani Boudjema Chaouch Djebbar Haddad Kaci Lahlou Mansouri Meziane Ouali Rahmani Saïdi Slimani Tazi Zerrouki Adjovi Bamba Camara Coulibaly Dembélé Diop Fofana Gueye Keïta Mbaye Ngom Sall Sissoko Touré Diarra Bui Dang Duong Huynh Lam Ngo Phan Truong Vo Vu Liu Huang Zhou Xu Lin Kim Park Sato Tanaka Nakamura Yamamoto Ivanov Petrov Sokolov Wiśniewski Zieliński Kamiński Lewandowski Nowicki Horvat Dvořák Kovács Nagy Szabó Popescu Ionescu Georgescu Demir Kaya Şahin Çelik Aydın Öztürk Arslan Avakian Hakobian Sarkissian Topalian Baghdassarian Cohen Lévy Benichou Attali Elbaz Krief Schwartz Bauer Becker Braun Hartmann Koch Krüger Neumann Richter Schäfer Vogel Wolff Zimmermann Dubreuil Lagarde Lebrun Lemaître Lenoir Marchal Pruvost Vasseur Delattre Desmet Dhont Vandamme Verhaeghe Wauters Peeters Janssens Maes Haas Kremer Frey Gross Roth Schmid Brunner Steiner Fontanel Vergnaud Lacombe Delpech Rouquette Combes Bousquet Malet Couderc Delmas Lafon Puech Rouzaud Salles Vayssière Besse Chassang Fayolle Mounier Peyrard Rochette Tixier Vialatte Dufaure Laurens Brouard Courtois Hamelin Jouin Poirier Rabier Tessier Thibault Verdier Andrieu Bouvier Brossard Chanal Chomel Coste Cordier Dalmasso Derbez Escudier Faucher Gimenez Gras Hugues Jacquemin Lhermitte Maurin Molinier Pascal_ Pujade Rastoin Revel Rolland_ Sauvan Testanière Vidal_ Vincenti Achard Barral_ Bourdon Charpin Daviau Esquerré Ferrand Gombert Hébrard Jamet Lambertin Mestre Nouvel Ollier Perret Ravel Sautel Tourniaire`).map(x=>x.replace(/_$/,'').replace(/_/g,' ')),
+ m:sp(`Achille Adrien Aimé Alban Albin Alexis Alphonse Amaury Anatole Anselme Aristide Armand Arsène Auguste Aurèle Barnabé Basile Bastien Benjamin Blaise Boris Brice Calixte Cassien Célestin César Clovis Côme Constant Corentin Cyprien Cyril Désiré Edgar Edmond Élie Élouan Émile Ernest Étienne Eudes Évrard Fabrice Félix Ferdinand Firmin Florent Gabin Gaspard Gaston Gédéon Gilbert Gonzague Gustave Hector Henri Hippolyte Honoré Ignace Isidore Jacques Joachim Joël Jordan Joseph Jules Justin Lazare Léandre Léon Léonard Lionel Lucien Marceau Marius Martial Maurice Médéric Michel Nathan Noé Octave Odilon Oscar Pacôme Philémon Prosper Raphaël Rémi Robin Roch Sacha Samuel Séraphin Simon Sylvain Timothée Tristan Ulysse Valentin Victor Virgile Yves Zacharie Amine Bilal Farid Hakim Ilyes Kamel Malik Rachid Sofiane Walid Yanis Adama Boubacar Cheikh Moussa Ousmane Seydou Alassane Bao Quang Hiro Kenzo Matteo Enzo Luca Marco Diego Pablo Rafael Tiago Nuno Jakub Tomasz Levon Aram Dimitri Elias Anton Lars Sven Finn Erwan Gwendal Maël Ronan Iban Xabi Txomin Augustin Bertil Jonas Lisandru Paskal Silvère Théophile`),
+ f:sp(`Adèle Agathe Albane Alice Aline Amandine Ambre Anaïs Angèle Apolline Ariane Armelle Astrid Aude Augustine Aurore Axelle Béatrice Blanche Capucine Cécile Célia Clarisse Clotilde Colette Constance Coralie Daphné Diane Edwige Éléonore Élise Elsa Emma Estelle Eugénie Éva Fanny Faustine Flavie Gabrielle Garance Geneviève Gisèle Héloïse Hortense Irène Iris Jacqueline Jeanne Joséphine Judith Juliette Justine Laetitia Lison Louise Lucie Lucille Ludivine Madeleine Maëva Margot Marguerite Marianne Marine Mathilde Maud Mélisande Mireille Nadège Nina Noëlle Octavie Odile Olympe Ondine Pénélope Perrine Philippine Rose Roxane Salomé Sarah Séverine Sidonie Suzanne Sybille Tiphaine Ursule Valentine Victoire Violette Yvonne Zélie Amel Djamila Hanane Kenza Lina Malika Nadia Rania Sabrina Salma Souad Aminata Coumba Mariama Nafissatou Oumou Rokia Hoa Lan Thuy Yuna Sakura Chiara Elena Paola Sofia Valentina Mariana Beatriz Joana Kasia Magda Anahid Lilit Tamar Ilona Ingrid Greta Solveig Enora Rozenn Soazig Anaëlle Maddi Amaia Itziar Bérangère Ombeline Prune Romane`),
+ cm:["Jean","Pierre","Paul","Louis","Charles","Marc"], cf:["Marie","Anne","Rose","Lou"],
+ types:sp(`Rue Avenue Boulevard Chemin Impasse Allée Place Route Traverse Montée Quai Cours Passage Square Sentier Ruelle Promenade Rampe`),
+ streets:`des Arbousiers|du Vieux Lavoir|de la Combe Rousse|des Trois Cyprès|du Puits Clair|de la Bergerie|des Amandiers|du Pré Fleuri|de l'Aiguier|des Genêts d'Or|du Grand Chêne|de la Tuilerie|des Câpriers|du Clos Sauvage|de la Font Vieille|des Micocouliers|du Pigeonnier|de la Restanque|des Jas|du Moulin à Huile|de la Draille|des Écureuils|du Petit Bois|de la Calade|des Figuiers|du Rocher Blanc|de l'Orangerie|des Vergers|du Belvédère|de la Pinède|des Coquelicots|du Ruisseau|de la Treille|des Sources Vives|du Col Bleu|de la Ferrage|des Bories|du Vallon Doux|de la Garenne|des Hirondelles|du Mas Neuf|de la Cascade|des Tilleuls|du Cèdre|de l'Étang Clair|des Bruyères|du Soleil Couchant|de la Vigie|des Glycines|du Lavandin|de la Charrette|des Pervenches|du Four Banal|de la Lune|des Romarins|du Pont Vieux|de la Murette|des Grenadiers|du Hameau|de la Colline Verte|des Iris Bleus|du Bastidon|de la Barque|des Mûriers|du Jas Neuf|de la Tour Ronde|des Aubépines|du Verger Haut|de la Bastide Rose|des Joncs|du Grand Vallon|de la Sablière|des Cistes|du Petit Port|de la Clairière|des Tamaris|du Lauzier|de la Roque Fine|des Peupliers Blancs|du Gué|de la Meunière|des Sept Fontaines|du Chant des Merles`.split("|"),
+ suites:`et des Quatre Vents|Prolongée|Supérieure|Inférieure|du Haut|et du Vieux Puits|Quartier Neuf|des Trois Fontaines|et de la Grange|Prolongement Est`.split("|"),
+ compl:["Bâtiment {L}","Résidence Les {P}","Appt {N}","Lieu-dit {LD}","Escalier {n}","Villa {n}","Le Clos des {P}","Domaine de la {S}","Maison {n}"],
+ plural:sp(`Arbousiers Câpriers Tamaris Agaves Palmiers Asphodèles Lauriers Cyprès Grenadiers Eucalyptus Mimosas Pinsons Acacias Lentisques Cigalons`),
+ lieux:["Le Pradon","La Font d'Aurel","Les Ribas","Le Plan Bas","La Moutte","Les Claux","Le Collet","La Colle Rousse","Les Adrechs","Le Défens"],
+ sing:sp(`Pinède Treille Garrigue Source Ferrage Tuilerie Bergerie Cascade`),
+ vroot:sp(`Castel Mont Roc Bel Font Val Clar Beau Sauve Cabre Lauz Puy Serre Aigue Esco Mira Brame Coust Malau Pey Rouss Vill Gard Cor Lur Sal Ven`),
+ vsuf:sp(`brune laurier sec fleuri ac ières eyrac argues ol ane ette ouse ier on ade enc as ignac ouret ery aval uech outier`),
+ vfeat:`sur-Siagnole|sur-Mer|les-Pins|les-Oliviers|des-Collines|la-Garrigue|les-Vignes|sur-Ourmède|sur-Caloune|sur-Verdelle|sur-Esteronne|les-Cigales|les-Fontaines|de-Haute-Roche|le-Vieux|les-Bains|la-Neuve|du-Lac|aux-Ânes|en-Bréonne`.split("|"),
+ saintsM:sp(`Aubin Hilaire Pons Cyr Gervais Médard Ambroise Bénézet Véran Mitre Honorat Lambert Andéol`), saintsF:sp(`Agathe Colombe Foy Odile Solange Brigitte Radegonde Euphémie`),
+ vart:["Le Pigeonnier","La Bastidonne-Haute","Les Jas-Hauts","Le Puy-Clair","La Ferrage-Neuve","Les Granges-Rouges","Le Mas-Brûlé","La Combe-aux-Loups"],
+ pseudoA:sp(`petit grand vert bleu joyeux rapide sage rouge doux fou`), pseudoB:sp(`renard hibou colibri lynx escargot nuage galet pivert marmotte cigale pingouin`)
+},
+en:{
+ noms:sp(`Abbott Ainsworth Akers Appleby Ashdown Ashworth Atherton Bagshaw Balfour Barraclough Bartlett Beckett Bellamy Blackwood Blythe Bramble Brightwell Buckley Burrows Cartwright Catchpole Chadwick Chamberlain Cheshire Clayton Clifford Cotterill Crabtree Croft Dalton Darby Dawlish Dewhurst Dobson Doherty Duckworth Eastwood Eccleston Elmsworth Entwistle Fairbairn Fairweather Falconer Fenwick Fernsby Finch Fothergill Garside Gilchrist Goodfellow Greenhalgh Gresley Gulliver Hargreaves Hartley Haverford Haworth Heathcote Hemsworth Higginbottom Holloway Honeysett Hopkirk Hutchinson Ibbotson Inchbald Jessop Kettlewell Kingsley Lambton Langley Larkin Lockwood Loveday Lowther Lumley Mabey Marchbank Merriweather Micklethwaite Midgley Mossop Nettleship Newbold Oakley Ogden Ormerod Pemberton Pennington Pickering Pinchbeck Plumstead Postlethwaite Prendergast Prothero Puddlesworth Quigley Radcliffe Ramsbottom Rawlinson Redfern Ridley Rowntree Satterthwaite Scrivener Shackleton Sheldrake Shufflebottom Sidebottom Slater Snodgrass Sowerby Spratt Stainforth Starling Sutcliffe Swithinbank Tattersall Thistlethwaite Thornbury Threlfall Tibbs Tolley Townsend Trelawney Tremayne Trotter Tunstall Uttley Wadsworth Wainwright Warburton Whitlock Whittaker Wigglesworth Winterbottom Woodhouse Wraith Yardley Yeoman Abernethy Buchanan Cameron Drummond Farquhar Galbraith Lennox Macaulay McAllister McKenzie Munro Ogilvy Sinclair Urquhart Wallace Cadwallader Gwynne Llywelyn Meredith Pryce Vaughan Brennan Callaghan Donnelly Flanagan Gallagher Hennessy Keane Lynch McGuire Rafferty Sheridan Adebayo Boateng Danquah Eze Obi Okonkwo Osei Agarwal Banerjee Desai Kapoor Malhotra Mehta Nair Reddy Bhatti Chaudhry Iqbal Qureshi Siddiqui Cheung Fung Lau Tsang Kowalczyk Petrou Christodoulou Papadopoulos Anagnostou Bagnall Birtwistle Cholmondeley Featherstonehaugh Grimshaw Hollingworth Huxtable Lightfoot Mottershead Openshaw Pargeter Rushworth Tickle Underwood Votier Whitworth`),
+ m:sp(`Alistair Ambrose Angus Archibald Barnaby Bartholomew Basil Benedict Bertie Cedric Clement Cuthbert Dougal Duncan Edmund Egbert Felix Fergus Gideon Gilbert Godfrey Gregory Hector Horace Humphrey Ignatius Jasper Jeremy Julian Kenneth Lancelot Laurence Lionel Malcolm Montague Mortimer Neville Nathaniel Ninian Percival Peregrine Quentin Ralph Reginald Rufus Rowan Septimus Simon Stanley Tarquin Timothy Tobias Torquil Vernon Wilfred Ewan Gethin Iolo Dafydd Aled Cormac Eoin Fionn Padraig Seamus Amir Dev Sanjay Rohan Kofi Tunde Emeka Kwesi Hiroshi Jun Rafe Ivo Ellis Austin Crispin Digby Fitzwilliam Lysander Orlando`),
+ f:sp(`Agatha Araminta Beatrix Bryony Camilla Cecily Clementine Cordelia Delphine Dorothea Edwina Elspeth Esme Euphemia Felicity Georgina Gwendolyn Hattie Henrietta Honor Hyacinth Ivy Jemima Josephine Juniper Katherine Leticia Lavinia Lettice Mabel Marigold Millicent Minerva Nell Octavia Ottilie Pandora Penelope Persephone Philippa Primrose Prudence Rosalind Rosamund Seraphina Tabitha Theodora Una Verity Violet Wilhelmina Winifred Ffion Gwen Nia Seren Bronagh Clodagh Orla Roisin Saoirse Ananya Divya Kavya Meera Nkechi Adwoa Efua Ngozi Akiko Hana Keira Tamsin Lowenna Morwenna Allegra Hermia Peony Wren`),
+ cm:["John","James","Hugh"], cf:["Mary","Anne","Lucy","Rose"],
+ types:sp(`Lane Road Close Crescent Mews Grove Street Avenue Drive Terrace Gardens Row Walk Way Court Hill`), typeAfter:true,
+ streets:sp(`Badger Bramble Foxglove Kettle Teacup Crumpet Willow Hawthorn Thimble Puddle Marmalade Wobble Nettle Toffee Lark Heron Pudding Gooseberry Cobble Teasel Hedgehog Kipper Bluebell Dormouse Treacle Scone Muffin Barley Clover Rookery Cowslip Buttercup Sparrow Pickle Chutney Biscuit Custard Rhubarb Quince Primrose Magpie Otter Acorn Haddock Shortbread`),
+ suites:["North","East End","Upper","Lower","Extension","West Side"],
+ compl:["Flat {n}","Apartment {N}{L}","{S} Cottage","The Old {O}","Unit {n}","{S} House"],
+ plural:[], lieux:[], sing:sp(`Bramble Honeysuckle Thatch Willow Ivy Lavender Kettle Lantern`), old:sp(`Rectory Bakery Forge Schoolhouse Post Office Vicarage Dairy Mill`),
+ vpre:["Little ","Great ","Upper ","Lower ","Much ","Nether ","King's ","Long ","","",""],
+ vroot:sp(`Puddle Wobble Crumple Muddle Bramble Thistle Biscuit Pickle Chipping Snoring Dribble Trumpet Saddle Kettle Marrow Mossy Crumpet Fiddle Waffle Grumble Nibble Tumble`),
+ vsuf:["ton","by","combe","ford","wick","ham","bury","worth","stead","thorpe","ton-on-Sea","ford-on-the-Wold","by-in-the-Marsh","wick-under-Hill"],
+ pseudoA:sp(`happy sleepy cheeky jolly grumpy soggy plucky dapper`), pseudoB:sp(`badger otter teapot kipper puffin crumpet hedgehog scone`)
+}};
+
+/* ===================== UTILS ===================== */
+const stripAcc=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"");
+const norm=v=>stripAcc(String(v??"")).toUpperCase().replace(/[’`´]/g,"'").replace(/\s+/g," ").trim();
+const toks=v=>norm(v).split(/[^A-Z0-9]+/).filter(x=>x.length>=3);
+const slugWords=v=>stripAcc(String(v??"")).toLowerCase().replace(/['’]/g,"").split(/[^a-z0-9]+/).filter(Boolean);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const UP="ABCDEFGHIJKLMNOPQRSTUVWXYZ", ALNUM="0123456789"+UP;
+const normHeader=h=>stripAcc(String(h??"")).toLowerCase().replace(/[^a-z0-9]/g,"");
+function matchCase(orig,fake){
+  const s=String(orig??""), L=s.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g,"");
+  if(!L) return fake;
+  if(L===L.toUpperCase()){ let f=fake.toUpperCase(); if(!/[À-ÖØ-Þ]/.test(s)) f=stripAcc(f); return f; }
+  if(L===L.toLowerCase()) return fake.toLowerCase();
+  return fake;
+}
+function xmur3(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19}return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return(h^=h>>>16)>>>0}}
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function makeRng(seed){const r=mulberry32(xmur3(String(seed))());return{f:r,int:(a,b)=>a+Math.floor(r()*(b-a+1)),pick:arr=>arr[Math.floor(r()*arr.length)],
+  shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}}}
+
+/* ===================== MODÈLES (codes) ===================== */
+function tplTokens(t){const o=[];for(let i=0;i<t.length;i++){const c=t[i];
+  if(c==="\\"&&i+1<t.length) o.push({lit:t[++i]}); else if(c==="#") o.push({k:"d"}); else if(c==="A") o.push({k:"U"});
+  else if(c==="a") o.push({k:"l"}); else if(c==="*") o.push({k:"x"}); else o.push({lit:c});}return o}
+const escTpl=c=>"#Aa*\\".includes(c)?"\\"+c:c;
+function fromTpl(t,R){return tplTokens(t).map(x=>x.lit??(x.k==="d"?String(R.int(0,9)):x.k==="U"?UP[R.int(0,25)]:x.k==="l"?UP[R.int(0,25)].toLowerCase():ALNUM[R.int(0,35)])).join("")}
+function tplRegex(t){return new RegExp("^"+tplTokens(t).map(x=>x.lit!==undefined?reEsc(x.lit):x.k==="d"?"\\d":x.k==="U"?"[A-Z]":x.k==="l"?"[a-z]":"[0-9A-Z]").join("")+"$")}
+function tplSpace(t){return tplTokens(t).reduce((a,x)=>a*(x.lit!==undefined?1:x.k==="d"?10:x.k==="x"?36:26),1)}
+function exToTpl(ex){return [...String(ex)].map(c=>/\d/.test(c)?"#":/[A-Z]/.test(c)?"A":/[a-z]/.test(c)?"a":escTpl(c)).join("")}
+function inferTpl(vals){
+  vals=vals.map(s=>String(s).trim()).filter(Boolean); if(!vals.length) return "";
+  if(vals.length<4) return exToTpl(vals[0]);
+  const n=vals[0].length; if(!vals.every(v=>v.length===n)) return "";
+  let t="";
+  for(let p=0;p<n;p++){ const cs=vals.map(v=>v[p]);
+    if(cs.every(c=>c===cs[0])) t+=escTpl(cs[0]);
+    else if(cs.every(c=>/\d/.test(c))) t+="#"; else if(cs.every(c=>/[A-Z]/.test(c))) t+="A";
+    else if(cs.every(c=>/[a-z]/.test(c))) t+="a"; else if(cs.every(c=>/[0-9A-Z]/.test(c))) t+="*"; else return ""; }
+  return t;
+}
+
+/* ===================== DÉTECTION ===================== */
+const COMMON_F=sp(`Marie Nathalie Isabelle Sylvie Catherine Sandrine Valérie Christine Céline Stéphanie Sophie Véronique Laurence Aurélie Émilie Julie Caroline Virginie Hélène Anne Claire Camille Laure Delphine Agnès Élodie Mélanie Audrey Karine Corinne Florence Marion Pauline Charlotte Manon Léa Chloé Inès Zoé Clémence Margaux Martine Françoise Monique Nicole Patricia Brigitte Chantal Danielle Michèle Annie Jacqueline Josiane Ghislaine Odile Carole Fabienne Pascale Béatrice Myriam Sabrina Jessica Laëtitia Vanessa Emma Jade Louise Alice Lina Rose Anna Mila Ambre Julia Lucie Sarah Fatima Leïla Samira Yasmine Aïcha Nadia Amina Mélissa Océane Lisa Eva Juliette Nina Mathilde Agathe Elsa Romane Lou Gwenaëlle Nolwenn Maëlle Solène Ophélie Noémie Annabelle Bérénice Fatoumata Awa Linh Mei Giulia Francesca Carmen Lucía Agnieszka Ana Olivia Amelia Emily Grace Lucy Hannah Laura Rebecca Rachel Amy Lauren Chloe Megan Katie Gemma Kelly Helen Susan Margaret Elizabeth Mary Jane Deborah Sharon Tracey Karen Nicola Joanne Victoria Isabella Mia Ava Ella Lily Poppy Ruby Freya Daisy Evie Matilda Fiona Niamh Siobhan`);
+const COMMON_M=sp(`Thomas Nicolas Julien Sébastien Laurent Christophe Olivier Stéphane David Frédéric Philippe Pierre Vincent Jérôme Mathieu Guillaume Antoine Romain Alexandre Maxime Benoît Cédric Fabien Damien Arnaud Yannick Mickaël Ludovic Grégory Hervé Bruno Éric Patrick Thierry Pascal Didier Franck Gilles Emmanuel Jean Michel Alain Bernard Daniel Gérard Jacques Christian Serge Marc François André René Robert Louis Paul Hugo Lucas Gabriel Léo Raphaël Arthur Jules Adam Nathan Théo Tom Enzo Ethan Mohamed Mohammed Karim Mehdi Youssef Nabil Mamadou Ibrahima Kévin Anthony Florian Quentin Baptiste Loïc Gaëtan Xavier Ange Wei Minh Paolo Lorenzo Javier Joaquim Piotr Arman Oliver George Harry Jack Jacob Noah Charlie James William Henry Joshua Matthew Andrew Michael Christopher Mark Richard Steven Stephen Peter John Simon Ian Gary Neil Edward Samuel Benjamin Owen Rhys Callum Liam Connor Ryan Sean Isaac Alfie Archie Freddie Logan Mason Riley Zachary Dylan Max Joseph Leo Teddy Theo Elijah Reggie Rory Declan Ciaran Hamish Rupert Nigel Clive Graham Colin Trevor Kwame Chidi Arjun Ravi Tariq Imran Kenji Mateusz`);
+const CIVS=new Set(["M","MR","MME","MLLE","MONSIEUR","MADAME","MADEMOISELLE","MRS","MS","MISS","MX","DR"]);
+const TEL_RE=/^(?:\+\d{2,3}[\s.\-]?|00\d{2,3}[\s.\-]?|0)[1-9](?:[\s.\-]?\d{2}){4}$/;
+const DATE_RE=/^(\d{1,2})([\/.\-])(\d{1,2})\2(\d{4})$|^(\d{4})-(\d{2})-(\d{2})$/;
+const STREET_FR=/^(\d+\s*(BIS|TER|[A-D])?\s*,?\s*)?(RUE|AVENUE|AV|BD|BOULEVARD|CHEMIN|CHE|CH|IMPASSE|IMP|ALLEE|ROUTE|RTE|PLACE|PL|QUAI|COURS|TRAVERSE|TRA|MONTEE|PASSAGE|SQUARE|SENTIER|LOTISSEMENT|LOT|HAMEAU|VOIE|CITE|ESPLANADE|PROMENADE|FAUBOURG|FBG|RAMPE|DOMAINE|CARRIERE|RUELLE|ZA|ZI|PARC|VILLAGE|MAS)\b/;
+const STREET_EN=/\b(ROAD|STREET|LANE|CLOSE|AVENUE|DRIVE|WAY|CRESCENT|GROVE|MEWS|TERRACE|GARDENS|HILL|ROW|WALK|COURT|SQUARE|PLACE|GREEN)$/;
+const COMPL_RE=/^(BAT|BATIMENT|RESIDENCE|RES|APPT|APPARTEMENT|APT|ESC|ESCALIER|LIEU[ -]?DIT|BP|CS|VILLA|CHEZ|IMMEUBLE|IMM|ENTREE|ETAGE|LOGEMENT|LOG|PORTE|TOUR|FLAT|APARTMENT|UNIT|SUITE)\b/;
+const isStreet=v=>{const n=norm(v);return STREET_FR.test(n)||STREET_EN.test(n)};
+let PRE_DICT=null, PRE_F=null, PRE_M=null;
+function buildDict(){
+  PRE_F=new Set([...COMMON_F,...POOLS.fr.f,...POOLS.en.f].map(norm)); PRE_M=new Set([...COMMON_M,...POOLS.fr.m,...POOLS.en.m].map(norm));
+  PRE_DICT=new Set([...PRE_F,...PRE_M]);
+}
+const H_RULES=[
+  [/^(civ|civilite|titre|title|sexe|genre|gender|qualite)$/,"civ"],
+  [/^(nom|noms|nomusage|nomdusage|nomfamille|nomdefamille|nompatronymique|nompatro|nompat|nomnaissance|nomdenaissance|nomnais|nommarital|nomepoux|lastname|surname|familyname|name|patronyme)$/,"nom"],
+  [/^(prenom|prenoms|prenom1|prenom2|autresprenoms|firstname|forename|givenname|middlename)$/,"prenom"],
+  [/^(numen|matricule|matr|ine|nir|numsecu|numss|nss|insee|identifiant|idpersonne|idagent|login|uid|numagent|numeroagent|harpege)$/,"code"],
+  [/^(tel|tele|telephone|tel\d|telport|telportable|telfixe|telpro|telperso|teldom|portable|mobile|phone|gsm|numtel|numerotel|telephoneportable|telephonefixe|mobilephone)$/,"tel"],
+  [/(naiss|ddn|birth|dob|nele|neele|datenais)/,"date"],
+  [/^(adr1|adresse|adresse1|rue|street|voie|libvoie|libellevoie|nomvoie|nomrue|address|address1|addressline1|adrvoie)$/,"rue"],
+  [/^(adr2|numero|num|numvoie|nvoie|novoie|no|n|nrue|housenumber|numrue)$/,"num"],
+  [/^(adr5|suitevoie|suiterue)$/,"suite"],
+  [/^(adr3|adr4|complement|complementadresse|compladr|cpladr|adresse2|adresse3|address2|address3|addressline2|lieudit|batiment|bat|residence)$/,"compl"],
+  [/^(cp|codepostal|codepost|postcode|zip|zipcode|postalcode)$/,"cp"],
+  [/^(ville|commune|town|city|localite|bureaudistributeur|villeresidence)$/,"ville"],
+  [/(mail|courriel)/,"mail"]
+];
+function guessHeader(h){ const k=normHeader(h); if(!k) return null; for(const [re,r] of H_RULES) if(re.test(k)) return r; return null; }
+function detectColumns(H,B){
+  if(!PRE_DICT) buildDict();
+  const n=H.length, out=H.map(()=>({role:"keep",params:{},src:""}));
+  const st=H.map((h,i)=>{
+    const v=B.map(r=>String(r[i]?.v??"").trim()).filter(Boolean), N=v.length||1;
+    const pct=f=>v.filter(f).length/N;
+    const years=v.map(x=>{const m=x.match(DATE_RE);return m?+(m[4]||m[5]):0}).filter(Boolean).sort((a,b)=>a-b);
+    return {v,N:v.length,mail:pct(x=>/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(x)),civ:pct(x=>CIVS.has(norm(x).replace(/[^A-Z]/g,""))),
+      tel:pct(x=>TEL_RE.test(x)),date:pct(x=>DATE_RE.test(x)),medYear:years.length?years[years.length>>1]:0,
+      cp:pct(x=>/^\d{4,5}$/.test(x)&&+x>=1000&&+x<=98999),num:pct(x=>/^\d{1,4}\s?(bis|ter|quater|[a-d])?$/i.test(x)),
+      rue:pct(isStreet),compl:pct(x=>COMPL_RE.test(norm(x))),pre:pct(x=>PRE_DICT.has(norm(x).split(/[ \-]/)[0])),
+      alpha:pct(x=>/^[A-Za-zÀ-ÖØ-öø-ÿ' \-]+$/.test(x)),distinct:new Set(v.map(norm)).size/N,
+      code:pct(x=>/^(?=.*\d)(?=.*[A-Z])[A-Z0-9]{7,}$/.test(x))};
+  });
+  const set=(i,role,src,params)=>{out[i]={role,params:params||{},src}};
+  H.forEach((h,i)=>{const r=guessHeader(h); if(r) set(i,r,"h")});
+  const free=i=>i>=0&&i<n&&out[i].role==="keep"&&!out[i].src&&st[i].N>0;
+  const thisYear=new Date().getFullYear();
+  st.forEach((s,i)=>{ if(!free(i)) return;
+    if(s.mail>=.8) set(i,"mail","c");
+    else if(s.civ>=.9) set(i,"civ","c");
+    else if(s.tel>=.8) set(i,"tel","c");
+    else if(s.date>=.8&&s.medYear&&s.medYear<thisYear-17&&s.medYear>thisYear-90) set(i,"date","c");
+    else if(s.code>=.9&&s.distinct>=.9) set(i,"code","c");
+    else if(s.rue>=.4) set(i,"rue","c");
+    else if(s.compl>=.4) set(i,"compl","c");
+    else if(s.pre>=.5&&s.alpha>=.9) set(i,"prenom","c");
+  });
+  const idx=r=>out.map((o,i)=>o.role===r?i:-1).filter(i=>i>=0);
+  idx("prenom").forEach(p=>{ if(idx("nom").length) return;
+    for(const j of [p-1,p+1]) if(free(j)&&st[j].alpha>=.9&&st[j].pre<.3){set(j,"nom","c");break;} });
+  idx("rue").forEach(r=>{ for(const j of [r-1,r+1]) if(free(j)&&st[j].num>=.8){set(j,"num","c");break;} });
+  for(let i=0;i<n;i++) if(free(i)&&st[i].cp>=.95&&st[i].distinct<.9){
+    const nb=[i+1,i-1].find(j=>j>=0&&j<n&&(out[j].role==="ville"||(free(j)&&st[j].alpha>=.9)));
+    if(nb!==undefined||idx("rue").some(r=>Math.abs(r-i)<=4)){ set(i,"cp","c"); if(nb!==undefined&&free(nb)) set(nb,"ville","c"); }
+  }
+  idx("cp").forEach(c=>{ if(idx("ville").length) return; for(const j of [c+1,c-1]) if(free(j)&&st[j].alpha>=.9){set(j,"ville","c");break;} });
+  // texte libre : une colonne restante qui cite le nom ou le prénom de la personne de la même ligne
+  const nI=idx("nom"), pI=idx("prenom");
+  if(nI.length||pI.length) for(let i=0;i<n;i++){ if(!free(i)) continue; let hit=0;
+    B.forEach(r=>{ const v=" "+norm(r[i]?.v)+" "; if(v.length<4) return;
+      const w=[...nI,...pI].flatMap(j=>toks(r[j]?.v)); if(w.some(x=>new RegExp("[^A-Z0-9]"+reEsc(x)+"[^A-Z0-9]").test(v))) hit++; });
+    if(hit>=3||hit>=B.length*.05&&hit>0) set(i,"texte","c"); }
+  out.forEach((o,i)=>{ if(o.role==="code") o.params={tpl:inferTpl(st[i].v)}; if(o.role==="date") o.params={days:180}; });
+  return out;
+}
+function genderOf(civ){
+  const c=norm(civ).replace(/[^A-Z]/g,"");
+  if(!c) return null;
+  if(/^(MME|MADAME|MLLE|MADEMOISELLE|MRS|MS|MISS|F|FEMME|FEMININ)$/.test(c)) return "F";
+  if(/^(M|MR|MONSIEUR|H|HOMME|MASCULIN)$/.test(c)) return "M";
+  return null;
+}
+
+/* ===================== MOTEUR ===================== */
+const ROLE_GROUP={civ:"id",nom:"id",prenom:"id",code:"id",tel:"id",date:"id",rue:"adr",num:"adr",suite:"adr",compl:"adr",cp:"adr",ville:"adr",mail:"mail",liste:"cus",fixe:"cus",vider:"cus",texte:"cus",keep:"keep"};
+const ROLES=["keep","civ","nom","prenom","code","tel","date","rue","num","suite","compl","cp","ville","mail","liste","fixe","vider","texte"];
+function parseDate(s){
+  const m=String(s).trim().match(DATE_RE); if(!m) return null;
+  if(m[1]) return {d:+m[1],mo:+m[3],y:+m[4],out:(dt)=>{const D=String(dt.getUTCDate()),M=String(dt.getUTCMonth()+1);return (m[1].length===2?D.padStart(2,"0"):D)+m[2]+(m[3].length===2?M.padStart(2,"0"):M)+m[2]+dt.getUTCFullYear()}};
+  return {d:+m[7],mo:+m[6],y:+m[5],out:(dt)=>dt.toISOString().slice(0,10)};
+}
+function getPools(flavour,kit){
+  const B=POOLS[flavour], P={...B,noms:[...B.noms],m:[...B.m],f:[...B.f],fullStreets:[],villes:[]};
+  for(const l of kit.lists){ if(l.kind==="custom") continue; if(!(l.style==="mix"||l.style===flavour)) continue;
+    const k={nom:"noms",prenomF:"f",prenomM:"m",rue:"fullStreets",ville:"villes"}[l.kind]; if(k) P[k].push(...l.items); }
+  for(const k of ["noms","m","f","fullStreets","villes"]){ const seen=new Set(); P[k]=P[k].filter(x=>{const n=norm(x);if(!n||seen.has(n))return false;seen.add(n);return true}); }
+  return P;
+}
+
+function pseudonymise(data, roles, params, opts, kit){
+  const R=makeRng(opts.seed), P=getPools(opts.flavour,kit);
+  const C={}; ROLES.forEach(r=>C[r]=roles.map((x,i)=>x===r?i:-1).filter(i=>i>=0));
+  const first=r=>C[r][0];
+  const cell=(row,i)=>i===undefined?"":(row[i]?.v??"");
+  const realNom=new Set(), realPre=new Set(), realNomTok=new Set(), realPreTok=new Set(), realMail=new Set(), realVille=new Set(), realRue=new Set(), realAll=new Set();
+  for(const row of data){
+    row.forEach(c=>{const v=norm(c?.v); if(v) realAll.add(v);});
+    C.nom.forEach(i=>{const v=cell(row,i); if(norm(v)){realNom.add(norm(v)); toks(v).forEach(x=>realNomTok.add(x));}});
+    C.prenom.forEach(i=>{const v=cell(row,i); if(norm(v)){realPre.add(norm(v)); toks(v).forEach(x=>realPreTok.add(x));}});
+    C.mail.forEach(i=>{const v=String(cell(row,i)).trim().toLowerCase(); if(v) realMail.add(v);});
+    C.ville.forEach(i=>{const v=norm(cell(row,i)); if(v) realVille.add(v);});
+    C.rue.forEach(i=>{const v=norm(cell(row,i)); if(v) realRue.add(v);});
+  }
+  const realTok=new Set([...realNomTok,...realPreTok]);
+  const clean=s=>!toks(s).some(x=>realTok.has(x));
+  const picker=list=>{const a=R.shuffle([...list]);let i=0;return ok=>{for(let k=0;k<a.length;k++){const v=a[i++%a.length];if(ok(v))return v}return null}};
+  const maps={nom:new Map(),prenom:new Map(),code:new Map(),tel:new Map(),date:new Map(),city:new Map(),rue:new Map(),num:new Map(),compl:new Map(),mail:new Map(),liste:new Map()};
+  const stats={pseudoMails:0,nomCombos:0,preReuse:{F:0,M:0},dateBad:0,lists:{},texte:{},codeCols:{}};
+
+  // ---- NOMS
+  const usedNom=new Set(), nomPick=picker(P.noms);
+  const nomOk=v=>!usedNom.has(norm(v))&&!realNom.has(norm(v))&&!toks(v).some(x=>realTok.has(x));
+  function oneNom(){ let v=nomPick(nomOk); if(v) return v; stats.nomCombos++; for(let g=0;g<2000;g++){const c=R.pick(P.noms)+"-"+R.pick(P.noms); if(nomOk(c)) return c;} return "X"+R.int(1000,9999); }
+  function fakeNom(orig){
+    const k=norm(orig); if(!k) return orig;
+    if(!maps.nom.has(k)){
+      let v;
+      if(/-/.test(k)&&!/^(D|L|O|N)'/.test(k)){ for(let g=0;g<400;g++){const c=R.pick(P.noms)+"-"+R.pick(P.noms); if(nomOk(c)&&c.split("-")[0]!==c.split("-")[1]){v=c;break;}} }
+      if(!v) v=oneNom();
+      usedNom.add(norm(v)); maps.nom.set(k,{real:String(orig).trim(),fake:v});
+    }
+    return matchCase(orig,maps.nom.get(k).fake);
+  }
+  // ---- PRÉNOMS
+  const usedPre={M:new Set(),F:new Set()}, prePick={M:picker(P.m),F:picker(P.f)};
+  function onePre(g,orig){
+    const ok1=v=>!usedPre[g].has(norm(v))&&!realPre.has(norm(v))&&!realTok.has(norm(v))&&norm(v)!==norm(orig);
+    const ok2=v=>!realPre.has(norm(v))&&!realNomTok.has(norm(v));
+    const ok3=v=>norm(v)!==norm(orig);
+    const a=prePick[g](ok1); if(a) return a; stats.preReuse[g]++; return prePick[g](ok2)||prePick[g](ok3);
+  }
+  function fakePrenom(orig,civ){
+    const k0=norm(orig); if(!k0) return orig;
+    const f0=k0.split(/[ \-]/)[0];
+    let g=genderOf(civ)||(PRE_F.has(f0)&&!PRE_M.has(f0)?"F":PRE_M.has(f0)&&!PRE_F.has(f0)?"M":null)||(R.f()<.5?"F":"M");
+    const k=k0+"|"+g;
+    if(!maps.prenom.has(k)){
+      let v; const sep=String(orig).trim().match(/[- ]/);
+      if(sep){ const own=toks(orig), lst=g==="F"?P.cf:P.cm;
+        let pre=lst.filter(x=>!realTok.has(norm(x))); if(!pre.length) pre=lst.filter(x=>!realNomTok.has(norm(x))&&!own.includes(norm(x)));
+        const a=pre.length?R.pick(pre):onePre(g,orig); let b=onePre(g,orig);
+        for(let i=0;i<20&&norm(b)===norm(a);i++) b=onePre(g,orig); v=a+sep[0]+b; }
+      else v=onePre(g,orig);
+      usedPre[g].add(norm(v)); maps.prenom.set(k,{real:String(orig).trim(),fake:v,g});
+    }
+    return matchCase(orig,maps.prenom.get(k).fake);
+  }
+  // ---- CODES / TÉLÉPHONES
+  const realCode=new Set(), usedCode=new Set(), colInfo={};
+  [...C.code,...C.tel].forEach(i=>{
+    const vals=data.map(r=>String(cell(r,i)).trim()).filter(Boolean); vals.forEach(v=>realCode.add(norm(v)));
+    let pre=0;
+    if(roles[i]==="code"&&!params[i]?.tpl&&vals.length>=5){ const mn=Math.min(...vals.map(v=>v.length)); while(pre<mn&&vals.every(v=>v[pre]===vals[0][pre])) pre++; pre=Math.max(0,Math.min(pre,mn-3)); }
+    colInfo[i]={tpl:roles[i]==="code"?(params[i]?.tpl||""):"",prefix:pre};
+  });
+  function shape(v,keep){ return [...v].map((c,i)=>{ if(i<keep) return c; if(/\d/.test(c)) return String(R.int(0,9)); if(/[A-Z]/.test(c)) return UP[R.int(0,25)]; if(/[a-z]/.test(c)) return UP[R.int(0,25)].toLowerCase(); return c; }).join(""); }
+  function telKeep(v){ const nd=(v.match(/\d/g)||[]).length, want=v.startsWith("+")?3:v.startsWith("00")?4:(nd===9?1:2); let seen=0; for(let i=0;i<v.length;i++){ if(/\d/.test(v[i])&&++seen===want) return i+1; } return 0; }
+  function fakeCode(orig,i,kind){
+    const raw=String(orig??"").trim(), k=norm(raw); if(!k) return orig;
+    const M=kind==="tel"?maps.tel:maps.code;
+    if(!M.has(k)){
+      const info=colInfo[i]; let v,g=0;
+      do{ v=info.tpl?fromTpl(info.tpl,R):shape(raw,kind==="tel"?telKeep(raw):info.prefix); g++; }while((usedCode.has(norm(v))||realCode.has(norm(v)))&&g<300);
+      usedCode.add(norm(v)); M.set(k,{real:raw,fake:v,col:i});
+    }
+    return M.get(k).fake;
+  }
+  // ---- DATES
+  function fakeDate(orig,i){
+    const raw=String(orig??"").trim(); if(!raw) return orig;
+    if(!maps.date.has(raw)){
+      const p=parseDate(raw); let v;
+      if(p){ const days=Math.max(1,+params[i]?.days||180); const dt=new Date(Date.UTC(p.y,p.mo-1,p.d)); dt.setUTCDate(dt.getUTCDate()+R.int(1,days)*(R.f()<.5?-1:1)); v=p.out(dt); }
+      else { stats.dateBad++; v=shape(raw,0); }
+      maps.date.set(raw,{real:raw,fake:v});
+    }
+    return maps.date.get(raw).fake;
+  }
+  // ---- VILLES + CP
+  const usedCp=new Set(), usedVille=new Set(), villePick=P.villes.length?picker(P.villes):null;
+  function genVille(){
+    if(villePick){ const v=villePick(x=>!usedVille.has(norm(x))&&!realVille.has(norm(x))&&clean(x)); if(v) return v; }
+    if(opts.flavour==="en"){ return R.pick(P.vpre)+R.pick(P.vroot)+R.pick(P.vsuf); }
+    const x=R.f(), base=()=>R.pick(P.vroot)+R.pick(P.vsuf);
+    if(x<.35) return base();
+    if(x<.68) return base()+"-"+R.pick(P.vfeat);
+    if(x<.9){ const f=R.f()<.6; return (f?"Saint-"+R.pick(P.saintsM):"Sainte-"+R.pick(P.saintsF))+"-"+R.pick(P.vfeat); }
+    return R.pick(P.vart);
+  }
+  function fakeCity(cpRaw,villeRaw){
+    let cp=String(cpRaw??"").trim(); if(/^\d{4}$/.test(cp)) cp="0"+cp;
+    const k=norm(cp)+"|"+norm(villeRaw); if(k==="|") return null;
+    if(!maps.city.has(k)){
+      let fcp,fv,g=0;
+      do{ fcp=String(R.int(opts.cpMin,opts.cpMax)).padStart(5,"0"); g++; }while(usedCp.has(fcp)&&g<20000);
+      if(opts.ville) fv=opts.ville;
+      else { g=0; do{ fv=genVille(); g++; }while((usedVille.has(norm(fv))||realVille.has(norm(fv))||!clean(fv))&&g<5000); }
+      usedCp.add(fcp); usedVille.add(norm(fv));
+      maps.city.set(k,{real:[cp,String(villeRaw??"").trim()].filter(Boolean).join(" "),cp:fcp,ville:fv});
+    }
+    return maps.city.get(k);
+  }
+  // ---- RUES
+  const usedRue=new Set();
+  function genRue(){
+    if(P.fullStreets.length&&R.f()<.5) return R.pick(P.fullStreets);
+    const tp=R.pick(P.types), nm=R.pick(P.streets); return P.typeAfter?nm+" "+tp:tp+" "+nm; }
+  function fakeRue(a1,a5,cityKey){
+    const k=norm(a1)+"¦"+norm(a5)+"¦"+cityKey; if(!norm(a1)&&!norm(a5)) return null;
+    if(!maps.rue.has(k)){
+      let v,g=0; do{ v=genRue(); g++; }while((usedRue.has(norm(v)+cityKey)||realRue.has(norm(v))||!clean(v))&&g<3000);
+      usedRue.add(norm(v)+cityKey);
+      let suite=""; if(norm(a5)){ let g2=0; do{ suite=R.pick(P.suites); g2++; }while((norm(suite)===norm(a5)||!clean(suite))&&g2<100); }
+      const lead=String(a1??"").trim().match(/^(\d+)\s*(bis|ter|[a-d])?\b\s*,?\s*/i);
+      maps.rue.set(k,{real:[a1,a5].map(x=>String(x??"").trim()).filter(Boolean).join(" "),fake:v,suite,k,usedNums:new Set(),lead:lead?(R.int(1,160)+(lead[2]?" "+lead[2]:"")+" "):""});
+    }
+    return maps.rue.get(k);
+  }
+  function fakeNum(orig,rue){
+    const s=String(orig??"").trim(); if(!s) return s;
+    const k=(rue?rue.k:"")+"#"+norm(s);
+    if(!maps.num.has(k)){
+      const suf=(s.match(/\s*(bis|ter|quater|[a-d])$/i)||[""])[0];
+      const on=parseInt(s,10);
+      let n,g=0; do{ n=R.int(1,g<200?160:999); g++; }while(((rue&&rue.usedNums.has(n))||n===on)&&g<2000);
+      rue&&rue.usedNums.add(n); maps.num.set(k,String(n)+(suf&&/\d$/.test(s.replace(suf,""))?suf:""));
+    }
+    return maps.num.get(k);
+  }
+  // ---- COMPLÉMENTS
+  function genCompl(){
+    const tpl=R.pick(P.compl);
+    return tpl.replace("{L}",String.fromCharCode(65+R.int(0,7))).replace("{N}",R.int(1,48)).replace("{n}",R.int(1,12))
+      .replace("{P}",P.plural.length?R.pick(P.plural):"Pins").replace("{LD}",P.lieux.length?R.pick(P.lieux):"Le Clos")
+      .replace("{S}",R.pick(P.sing)).replace("{O}",P.old?R.pick(P.old):"Mill");
+  }
+  function fakeCompl(orig,cityKey){
+    const k=norm(orig); if(!k) return orig;
+    const kk=k+"¦"+cityKey;
+    if(!maps.compl.has(kk)){ let v,g=0; do{v=genCompl();g++}while((!clean(v)||norm(v)===k)&&g<200); maps.compl.set(kk,{real:String(orig).trim(),fake:v}); }
+    return matchCase(orig,maps.compl.get(kk).fake);
+  }
+  // ---- LISTES
+  const listState={};
+  function fakeListe(orig,i,h){
+    const raw=String(orig??"").trim(), k=norm(raw); if(!k) return orig;
+    const id=params[i]?.list; const L=kit.lists.find(l=>l.id===id);
+    if(!L) return orig;
+    if(!listState[id]){ const items=L.items.filter(x=>!realAll.has(norm(x))); listState[id]={pick:picker(items),used:new Set(),n:items.length,map:new Map(),over:0}; }
+    const S=listState[id];
+    if(!S.map.has(k)){
+      let v=S.pick(x=>!S.used.has(norm(x)));
+      if(!v){ S.over++; const base=S.n?R.pick(L.items.filter(x=>!realAll.has(norm(x)))):(L.name||"Valeur"); let n=2; do{ v=base+" "+n++; }while(S.used.has(norm(v))); }
+      S.used.add(norm(v)); S.map.set(k,v); maps.liste.set(id+"¦"+k,{real:raw,fake:v,list:L.name});
+    }
+    stats.lists[i]={name:L.name,distinct:S.map.size,have:S.n,over:S.over,h};
+    return matchCase(raw,S.map.get(k));
+  }
+  // ---- MAILS
+  const usedMail=new Set(), resid=new Map(), residPick=picker(P.noms);
+  function residue(w){ if(!resid.has(w)){ let v=residPick(x=>{const s=slugWords(x).join("");return s.length>=3&&!realTok.has(norm(s))&&![...resid.values()].includes(s);}); resid.set(w,v?slugWords(v).join(""):w.split("").reverse().join("")); } return resid.get(w); }
+  function rndDigits(d){ return [...d].map((c,i)=>i===0&&c!=="0"?String(R.int(1,9)):String(R.int(0,9))).join(""); }
+  function fakeMail(orig,ctx){
+    const raw=String(orig??"").trim(); if(!raw) return raw;
+    const key=raw.toLowerCase();
+    if(maps.mail.has(key)) return maps.mail.get(key).fake;
+    const at=raw.lastIndexOf("@"); const local=(at>=0?raw.slice(0,at):raw).toLowerCase(), domain=at>=0?raw.slice(at):"";
+    const forms=[]; const sub=[];
+    const addForms=(real,fake,kind)=>{
+      const rw=slugWords(real), fw=slugWords(fake); if(!rw.length||!fw.length) return;
+      for(const j of [".","-","_",""]) if(rw.length>1||j==="") forms.push({text:rw.join(j),rep:fw.join(j),kind});
+      if(rw.length>1) rw.forEach((w,i)=>{ if(w.length>=3) forms.push({text:w,rep:fw[Math.min(i,fw.length-1)],kind}); });
+    };
+    if(ctx.nom) addForms(ctx.nom,ctx.fnom,"N");
+    if(ctx.pre) addForms(ctx.pre,ctx.fpre,"P");
+    forms.sort((a,b)=>b.text.length-a.text.length);
+    let s=local;
+    for(const f of forms){
+      if(f.text.length<2) continue;
+      const re=f.text.length>=4?new RegExp(reEsc(f.text),"g"):new RegExp("(^|[._\\-0-9\\u0002])"+reEsc(f.text)+"(?=$|[._\\-0-9\\u0001])","g");
+      s=s.replace(re,(m,pre)=>{ sub.push(f.rep); return (f.text.length>=4?"":pre)+"\u0001"+f.kind+(sub.length-1)+"\u0002"; });
+    }
+    let out;
+    if(!s.includes("\u0001")){
+      stats.pseudoMails++;
+      const d=(local.match(/\d+$/)||[""])[0];
+      const okw=w=>!realTok.has(norm(w)); const A=P.pseudoA.filter(okw), B=P.pseudoB.filter(okw);
+      out=R.pick(A.length?A:["zz"])+R.pick([".","_",""])+R.pick(B.length?B:["xy"])+(d?rndDigits(d):String(R.int(1,99)));
+    } else {
+      const pi=slugWords(ctx.pre)[0]?.[0], ni=slugWords(ctx.nom)[0]?.[0];
+      const fpi=slugWords(ctx.fpre)[0]?.[0], fni=slugWords(ctx.fnom)[0]?.[0];
+      s=s.replace(/(^|[._-])([a-z])([._-]?)(?=\u0001N)/g,(m,a,l,b)=>a+(l===pi&&fpi?fpi:l)+b);
+      s=s.replace(/(\u0001P\d+\u0002)([._-]?)([a-z])(?=$|[._\-0-9])/g,(m,a,b,l)=>a+b+(l===ni&&fni?fni:l));
+      s=s.replace(/(\u0001N\d+\u0002)([._-]?)([a-z])(?=$|[0-9])/g,(m,a,b,l)=>a+b+(l===pi&&fpi?fpi:l));
+      s=s.split(/(\u0001[NP]\d+\u0002)/).map(part=>part.startsWith("\u0001")?part:part.replace(/[a-z]{2,}/g,w=>residue(w)).replace(/\d+/g,rndDigits)).join("");
+      out=s.replace(/\u0001[NP](\d+)\u0002/g,(m,i)=>sub[+i]);
+    }
+    let fin=out+domain, n=2;
+    while(usedMail.has(fin.toLowerCase())||realMail.has(fin.toLowerCase())){ fin=out+(n++)+domain; }
+    usedMail.add(fin.toLowerCase()); maps.mail.set(key,{real:raw,fake:fin});
+    return fin;
+  }
+
+  // ---- PASSAGE LIGNE PAR LIGNE
+  const out=[]; let same=0;
+  for(const row of data){
+    const o=row.map(c=>({v:c?.v??"",n:!!c?.n}));
+    const set=(i,v,keepNum)=>{ if(i===undefined) return; const old=o[i].v; o[i]={v:String(v??""),n:!!keepNum&&/^\d+$/.test(String(v))}; if(norm(old)&&norm(old)===norm(v)) same++; };
+    const civ=cell(row,first("civ"));
+    const ctx={nom:cell(row,first("nom")),pre:cell(row,first("prenom"))};
+    C.nom.forEach(i=>set(i,fakeNom(cell(row,i))));
+    C.prenom.forEach(i=>set(i,fakePrenom(cell(row,i),civ)));
+    ctx.fnom=ctx.nom?maps.nom.get(norm(ctx.nom))?.fake||"":"";
+    ctx.fpre=ctx.pre?(o[first("prenom")]?.v||""):"";
+    C.code.forEach(i=>set(i,fakeCode(cell(row,i),i,"code")));
+    C.tel.forEach(i=>set(i,fakeCode(cell(row,i),i,"tel")));
+    C.date.forEach(i=>set(i,fakeDate(cell(row,i),i)));
+    const city=(C.cp.length||C.ville.length)?fakeCity(cell(row,first("cp")),cell(row,first("ville"))):null;
+    const cityKey=city?city.cp:"";
+    if(city){ C.cp.forEach(i=>set(i,String(cell(row,i)).trim()?city.cp:"")); C.ville.forEach(i=>set(i,norm(cell(row,i))?(opts.ville?city.ville:matchCase(cell(row,i),city.ville)):"")); }
+    const rue=(C.rue.length||C.suite.length)?fakeRue(cell(row,first("rue")),cell(row,first("suite")),cityKey):null;
+    if(rue){ C.rue.forEach(i=>set(i,norm(cell(row,i))?rue.lead+matchCase(cell(row,i),rue.fake):"")); C.suite.forEach(i=>set(i,norm(cell(row,i))?matchCase(cell(row,i),rue.suite):"")); }
+    C.num.forEach(i=>set(i,fakeNum(cell(row,i),rue),row[i]?.n));
+    C.compl.forEach(i=>set(i,fakeCompl(cell(row,i),cityKey)));
+    C.mail.forEach(i=>set(i,fakeMail(cell(row,i),ctx)));
+    C.liste.forEach(i=>set(i,fakeListe(cell(row,i),i,opts.headers[i])));
+    C.fixe.forEach(i=>{ o[i]={v:String(params[i]?.value??""),n:false}; });
+    C.vider.forEach(i=>{ o[i]={v:"",n:false}; });
+    out.push(o);
+  }
+  // ---- TEXTE LIBRE (après coup : on connaît toutes les correspondances)
+  if(C.texte.length){
+    const pairs=[];
+    maps.mail.forEach(x=>pairs.push([x.real,x.fake]));
+    maps.code.forEach(x=>pairs.push([x.real,x.fake])); maps.tel.forEach(x=>pairs.push([x.real,x.fake]));
+    maps.nom.forEach(x=>pairs.push([x.real,x.fake]));
+    maps.prenom.forEach(x=>pairs.push([x.real,x.fake]));
+    pairs.sort((a,b)=>b[0].length-a[0].length);
+    const W="A-Za-zÀ-ÖØ-öø-ÿ0-9@";
+    const res=pairs.filter(p=>p[0].length>=2).map(([r,f])=>[new RegExp("(^|[^"+W+"])("+reEsc(r).replace(/\s+/g,"\\s+")+")(?=$|[^"+W+"])",r.length<=3?"g":"gi"),f]);
+    C.texte.forEach(i=>{ let cnt=0;
+      out.forEach((o,ri)=>{ let v=String(data[ri][i]?.v??""); if(!v) return;
+        const hold=[]; for(const [re,f] of res) v=v.replace(re,(m,a,b)=>{cnt++; hold.push(matchCase(b,f)); return a+"\u0001"+(hold.length-1)+"\u0002";});
+        v=v.replace(/\u0001(\d+)\u0002/g,(m,k)=>hold[+k]); o[i]={v,n:false}; });
+      stats.texte[i]=cnt; });
+  }
+  return {out,src:data,maps,stats,same,C,real:{realNom,realPre,realTok,realNomTok,realPreTok,realAll}};
+}
+
+/* ===================== CONTRÔLES ===================== */
+function audit(res,headers,opts,params){
+  const {out,maps,C,real,stats}=res; const checks=[];
+  const nomFakes=[...maps.nom.values()].map(x=>norm(x.fake));
+  const nomOk=new Set(nomFakes).size===nomFakes.length&&!nomFakes.some(x=>real.realNom.has(x));
+  if(C.nom.length){ checks.push({s:nomOk?"ok":"bad",m:t("c_nom")(maps.nom.size,new Set(nomFakes).size),d:t("c_nom2")});
+    if(stats.nomCombos) checks.push({s:"warn",m:t("c_pool")(t("prompt").desc.nom,stats.nomCombos),act:{kind:"nom",count:Math.max(100,Math.ceil(maps.nom.size*0.6))}}); }
+  if(C.prenom.length){ const x=[...maps.prenom.values()].filter(p=>real.realPre.has(norm(p.fake))).length;
+    checks.push({s:x?"warn":"ok",m:t("c_pre")(maps.prenom.size),d:t("c_pre2")(x)});
+    for(const g of ["F","M"]) if(stats.preReuse[g]) checks.push({s:"warn",m:t("c_pool")(t("prompt").desc[g==="F"?"prenomF":"prenomM"],stats.preReuse[g]),act:{kind:g==="F"?"prenomF":"prenomM",count:100}}); }
+  C.code.forEach(i=>{ const vals=[...maps.code.values()].filter(x=>x.col===i).map(x=>x.fake); const tpl=params[i]?.tpl;
+    const bad=tpl?vals.filter(v=>!tplRegex(tpl).test(v)).length:0;
+    checks.push({s:bad?"bad":"ok",m:bad?t("c_code_bad")(headers[i],bad):t("c_code")(vals.length,headers[i])}); });
+  if(C.tel.length) checks.push({s:"ok",m:t("c_tel")(maps.tel.size)});
+  if(C.date.length) checks.push({s:stats.dateBad?"warn":"ok",m:t("c_date")(maps.date.size,stats.dateBad)});
+  if(C.cp.length||C.ville.length||C.rue.length) checks.push({s:"ok",m:t("c_adr")(maps.city.size,maps.rue.size),d:t("c_adr2")(opts.cpMin,opts.cpMax,opts.ville)});
+  if(C.mail.length){ const all=[...maps.mail.values()].map(x=>x.fake.toLowerCase()); const u=new Set(all).size===all.length;
+    checks.push({s:u?"ok":"bad",m:t("c_mail")(all.length,u),d:t("c_mail2")(stats.pseudoMails)}); }
+  Object.entries(stats.lists).forEach(([i,L])=>{
+    if(L.over) checks.push({s:"warn",m:t("c_listshort")(L.h,L.name,L.distinct,L.have),act:{kind:"custom",name:L.name,count:Math.max(20,Math.ceil((L.distinct-L.have)*1.3)),listId:params[i]?.list,h:L.h}});
+    else checks.push({s:"ok",m:t("c_list")(L.h,L.distinct,L.name)}); });
+  Object.entries(stats.texte).forEach(([i,n])=>checks.push({s:"ok",m:t("c_texte")(headers[i],n)}));
+  checks.push({s:res.same?"warn":"ok",m:t("c_same")(res.same)});
+  const leaks=[], src=res.src;
+  out.forEach((row,ri)=>{
+    const own=new Set(); C.prenom.forEach(i=>toks(src[ri][i]?.v).forEach(x=>own.add(x)));
+    row.forEach((c,ci)=>{
+      if(!c.v||C.civ.includes(ci)) return;
+      const w=new Set([...toks(c.v),...slugWords(String(c.v).split("@")[0]).map(x=>x.toUpperCase()).filter(x=>x.length>=3)]);
+      for(const x of w){ if(real.realNomTok.has(x)||own.has(x)){ leaks.push({r:ri,c:ci,v:c.v,t:x}); break; } }
+    });
+  });
+  checks.push({s:leaks.length?"warn":"ok",m:t("c_leak")(leaks.length),leaks});
+  return checks;
+}
+/* ===================== ZIP / XLSX / CSV ===================== */
+async function unzip(buf){
+  const dv=new DataView(buf), dec=new TextDecoder(); let e=-1;
+  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65557);i--) if(dv.getUint32(i,true)===0x06054b50){e=i;break;}
+  if(e<0) throw new Error("ZIP");
+  const n=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const files={};
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lho=dv.getUint32(p+42,true);
+    files[dec.decode(new Uint8Array(buf,p+46,nl))]={method,csize,lho}; p+=46+nl+el+cl;
+  }
+  return {async text(name){
+    const key=Object.keys(files).find(x=>x.toLowerCase()===name.toLowerCase()); if(!key) return null; const f=files[key];
+    const off=f.lho+30+dv.getUint16(f.lho+26,true)+dv.getUint16(f.lho+28,true); const data=new Uint8Array(buf,off,f.csize);
+    if(f.method===0) return dec.decode(data);
+    if(f.method!==8) throw new Error("compression "+f.method);
+    const ab=await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
+    return dec.decode(ab);
+  }};
+}
+async function readXlsx(buf){
+  const z=await unzip(buf), X=s=>new DOMParser().parseFromString(s,"application/xml"), q=(d,n)=>[...d.getElementsByTagNameNS("*",n)];
+  const wb=X(await z.text("xl/workbook.xml")), rels=X(await z.text("xl/_rels/workbook.xml.rels")), rm={};
+  q(rels,"Relationship").forEach(r=>rm[r.getAttribute("Id")]=r.getAttribute("Target"));
+  const sheets=q(wb,"sheet").map(s=>{ const id=s.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id")||s.getAttribute("r:id");
+    let tg=rm[id]||""; tg=tg.startsWith("/")?tg.slice(1):"xl/"+tg.replace(/^\.\//,""); return {name:s.getAttribute("name"),path:tg}; });
+  const dateXf=new Set(); const sty=await z.text("xl/styles.xml");
+  if(sty){ const d=X(sty), custom={}; q(d,"numFmt").forEach(n=>custom[n.getAttribute("numFmtId")]=n.getAttribute("formatCode")||"");
+    const cx=q(d,"cellXfs")[0]; if(cx) q(cx,"xf").forEach((xf,i)=>{ const id=+xf.getAttribute("numFmtId"), code=custom[id];
+      if((id>=14&&id<=17)||id===22||(id>=27&&id<=36)||(id>=50&&id<=58)||(code&&/[dy]/i.test(code.replace(/"[^"]*"|\[[^\]]*\]|\\./g,"")))) dateXf.add(i); }); }
+  const serial=v=>{ const dt=new Date(Date.UTC(1899,11,30)+Math.floor(+v)*86400000); return String(dt.getUTCDate()).padStart(2,"0")+"/"+String(dt.getUTCMonth()+1).padStart(2,"0")+"/"+dt.getUTCFullYear(); };
+  const ss=[]; const sst=await z.text("xl/sharedStrings.xml");
+  if(sst) q(X(sst),"si").forEach(si=>{ ss.push(q(si,"t").filter(tn=>!tn.closest||!tn.closest("rPh")).map(tn=>tn.textContent).join("")); });
+  return {sheets, async read(i){
+    const d=X(await z.text(sheets[i].path)); const rows=[];
+    q(d,"row").forEach((r,ri)=>{
+      const rn=(+r.getAttribute("r")||ri+1)-1, arr=rows[rn]=[]; let ci=0;
+      q(r,"c").forEach(c=>{
+        const ref=c.getAttribute("r"); if(ref){ const L=ref.match(/^[A-Z]+/)[0]; ci=[...L].reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1; }
+        const tp=c.getAttribute("t"), v=q(c,"v")[0]?.textContent??"";
+        let val="",num=false;
+        if(tp==="s") val=ss[+v]??""; else if(tp==="inlineStr") val=q(c,"t").map(x=>x.textContent).join("");
+        else if(tp==="b") val=v==="1"?"VRAI":"FAUX"; else if(tp==="str"||tp==="e") val=v; else if(v!==""&&dateXf.has(+c.getAttribute("s"))&&+v>=1){ val=serial(v); } else { val=v; num=v!==""; }
+        arr[ci]={v:val,n:num}; ci++;
+      });
+    });
+    const w=Math.max(0,...rows.filter(Boolean).map(r=>r.length));
+    const full=[]; for(let i=0;i<rows.length;i++){ const r=rows[i]||[]; full.push(Array.from({length:w},(_,j)=>r[j]||{v:"",n:false})); }
+    while(full.length&&full[full.length-1].every(c=>c.v==="")) full.pop();
+    return full;
+  }};
+}
+function parseDelimited(text){
+  text=text.replace(/^\uFEFF/,""); const line=text.split(/\r?\n/)[0]||"";
+  const cnt=ch=>line.split(ch).length-1; const d=[["\t",cnt("\t")],[";",cnt(";")],[",",cnt(",")]].sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=[]; let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=ch; }
+    else if(ch==='"'&&f==="") q=true; else if(ch===d){row.push(f);f="";} else if(ch==="\n"||ch==="\r"){ if(ch==="\r"&&text[i+1]==="\n") i++; row.push(f);rows.push(row);row=[];f=""; } else f+=ch; }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  while(rows.length&&rows[rows.length-1].every(x=>x==="")) rows.pop();
+  const w=Math.max(0,...rows.map(r=>r.length));
+  return rows.map(r=>Array.from({length:w},(_,j)=>{const v=r[j]??"";return {v,n:/^(0|[1-9]\d{0,14})([.,]\d+)?$/.test(v)};}));
+}
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+function zip(files){
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const d=new Date(), time=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1), date=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+  for(const [name,content] of files){
+    const nb=enc.encode(name), data=enc.encode(content), crc=crc32(data);
+    const h=new DataView(new ArrayBuffer(30)); h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(8,0,true);
+    h.setUint16(10,time,true); h.setUint16(12,date,true); h.setUint32(14,crc,true); h.setUint32(18,data.length,true); h.setUint32(22,data.length,true); h.setUint16(26,nb.length,true); h.setUint16(28,0,true);
+    parts.push(h.buffer,nb,data);
+    const c=new DataView(new ArrayBuffer(46)); c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(10,0,true);
+    c.setUint16(12,time,true); c.setUint16(14,date,true); c.setUint32(16,crc,true); c.setUint32(20,data.length,true); c.setUint32(24,data.length,true); c.setUint16(28,nb.length,true); c.setUint32(42,off,true);
+    cen.push(c.buffer,nb); off+=30+nb.length+data.length;
+  }
+  const cs=cen.reduce((a,b)=>a+b.byteLength,0), e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true); e.setUint32(12,cs,true); e.setUint32(16,off,true);
+  return new Blob([...parts,...cen,e.buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+const colL=i=>{let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+const xe=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function xlsx(sheetName,rows,headerIdx){
+  const NS='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"', H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const sd=rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((c,ci)=>{ if(c.v===""||c.v==null) return ""; const ref=colL(ci)+(ri+1), st=ri===headerIdx?' s="1"':"";
+    return c.n&&/^-?\d+(\.\d+)?$/.test(c.v)?`<c r="${ref}"${st}><v>${c.v}</v></c>`:`<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${xe(c.v)}</t></is></c>`; }).join("")+"</row>").join("");
+  const pane=headerIdx>=0?`<sheetViews><sheetView workbookViewId="0"><pane ySplit="${headerIdx+1}" topLeftCell="A${headerIdx+2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`:"";
+  const nm=xe(String(sheetName||"Feuille1").replace(/[\[\]:*?\/\\]/g," ").slice(0,31));
+  return zip([
+    ["[Content_Types].xml",H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ["_rels/.rels",H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ["xl/workbook.xml",H+`<workbook ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${nm}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels",H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ["xl/styles.xml",H+`<styleSheet ${NS}><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ["xl/worksheets/sheet1.xml",H+`<worksheet ${NS}>${pane}<sheetData>${sd}</sheetData></worksheet>`]
+  ]);
+}
+const delim=(rows,d)=>rows.map(r=>r.map(c=>{const v=String(c.v??"");return /["\n\r\t;]/.test(v)&&(d!=="\t"||/[\t\n\r"]/.test(v))?'"'+v.replace(/"/g,'""')+'"':v}).join(d)).join("\r\n");
+
+
+/* ===================== KIT (banque + profils) ===================== */
+const KIT_KEY="pseudonymiseur-kit-v1";
+let KIT={v:1,lists:[],profiles:{},headers:{}};
+function mergeKit(a,b){
+  const o={v:1,lists:[...(a.lists||[])],profiles:{...(a.profiles||{})},headers:{...(a.headers||{})}};
+  (b.lists||[]).forEach(l=>{ if(!l||!Array.isArray(l.items)) return; const j=o.lists.findIndex(x=>x.id===l.id);
+    if(j<0) o.lists.push(l); else { const seen=new Set(o.lists[j].items.map(norm)); o.lists[j]={...o.lists[j],items:[...o.lists[j].items,...l.items.filter(x=>!seen.has(norm(x)))]}; } });
+  Object.assign(o.profiles,b.profiles||{}); Object.assign(o.headers,b.headers||{});
+  return o;
+}
+function loadKit(){
+  try{ KIT=mergeKit(KIT,JSON.parse(document.getElementById("kit").textContent||"{}")); }catch(e){}
+  try{ const l=localStorage.getItem(KIT_KEY); if(l) KIT=mergeKit(KIT,JSON.parse(l)); }catch(e){}
+}
+function saveKit(){ try{ localStorage.setItem(KIT_KEY,JSON.stringify(KIT)); }catch(e){} }
+const uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toISOString().slice(0,10);
+
+/* ===================== UI ===================== */
+const $=s=>document.querySelector(s);
+const S={name:"fichier",book:null,sheetIdx:0,raw:null,roles:[],params:[],src:[],auto:[],res:null,page:0,checks:null,profile:null,pendingAssign:null};
+function toast(m){const el=$("#toast");el.textContent=m;el.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove("show"),3000)}
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll("[data-i18n]").forEach(e=>e.textContent=t(e.dataset.i18n));
+  document.querySelectorAll("[data-i18n-html]").forEach(e=>e.innerHTML=t(e.dataset.i18nHtml));
+  document.querySelectorAll("[data-i18n-ph]").forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===LANG));
+  document.title=LANG==="fr"?"Pseudonymiseur":"Pseudonymiser";
+  const k=$("#bkind").value; $("#bkind").innerHTML=Object.entries(t("kinds")).map(([v,l])=>`<option value="${v}">${l}</option>`).join(""); if(k) $("#bkind").value=k;
+  $("#bnameWrap").classList.toggle("hidden",$("#bkind").value!=="custom");
+  renderBank(); if(S.raw){ renderProfile(); renderCols(); } if(S.res) renderResult();
+}
+document.querySelectorAll("[data-lang]").forEach(b=>b.onclick=()=>{LANG=b.dataset.lang;try{localStorage.setItem("pseudo-lang",LANG)}catch(e){}applyLang()});
+const hRow=()=>Math.max(0,(+$("#hrow").value||1)-1);
+const headers=()=>S.raw?(S.raw[hRow()]||[]).map((c,i)=>String(c.v||"").trim()||colLetter(i)):[];
+const body=()=>S.raw?S.raw.slice(hRow()+1):[];
+const colLetter=i=>{let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+const sigOf=H=>H.map(normHeader).join("|");
+
+function setData(rows,sheetName){
+  if(!rows||!rows.length){$("#status").innerHTML=`<span class="err">${t("empty")}</span>`;return}
+  S.raw=rows; S.sheetName=sheetName||S.sheetName||"Feuille1"; S.res=null; $("#s4").classList.add("hidden");
+  runDetection(true);
+  $("#status").innerHTML=t("loaded")(body().length,headers().length,sheetName||"");
+  ["#s2","#s3"].forEach(s=>$(s).classList.remove("locked")); $("#run").disabled=false;
+  renderProfile(); renderCols();
+}
+function runDetection(useMemory){
+  const H=headers(), det=detectColumns(H,body());
+  S.roles=det.map(d=>d.role); S.params=det.map(d=>({...d.params})); S.src=det.map(d=>d.src); S.auto=[...S.roles];
+  S.profile=null;
+  if(!useMemory) return;
+  H.forEach((h,i)=>{ const m=KIT.headers[normHeader(h)]; if(m&&validRole(m)){ S.roles[i]=m.role; S.params[i]={...(m.params||{})}; S.src[i]="m"; } });
+  const p=KIT.profiles[sigOf(H)];
+  if(p){ S.profile=p; p.cols.forEach((c,i)=>{ if(i<H.length&&validRole(c)){ S.roles[i]=c.role; S.params[i]={...(c.params||{})}; S.src[i]="p"; } });
+    const st=p.settings||{}; if(st.flavour) $("#flavour").value=st.flavour; if(st.cpMin) $("#cpmin").value=st.cpMin; if(st.cpMax) $("#cpmax").value=st.cpMax;
+    if(st.ville!==undefined) $("#villetxt").value=st.ville; if(st.seed) $("#seed").value=st.seed; }
+}
+const validRole=m=>m&&ROLES.includes(m.role)&&(m.role!=="liste"||KIT.lists.some(l=>l.id===m.params?.list));
+function renderProfile(){
+  const p=S.profile;
+  $("#profile").innerHTML=`<span>${p?t("prof_known")(esc(p.name),esc(p.date)):esc(t("prof_new"))}</span>
+   <span class="row"><label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="saveprof" ${S.saveProf===false?"":"checked"}>${esc(t("prof_save"))}</label>
+   <button class="btn sm" id="redetect">${esc(t("prof_reset"))}</button></span>`;
+  $("#saveprof").onchange=e=>S.saveProf=e.target.checked;
+  $("#redetect").onclick=()=>{ runDetection(false); renderProfile(); renderCols(); };
+}
+function listOptions(sel){
+  return KIT.lists.map(l=>`<option value="${l.id}"${l.id===sel?" selected":""}>${esc(l.name)} (${l.items.length})</option>`).join("")+`<option value="__new">${esc(t("p_newlist"))}</option>`;
+}
+function previewTpl(tpl,i){
+  const R=makeRng(Math.random());
+  if(tpl) return fromTpl(tpl,R);
+  const v=String(body().find(r=>r[i]?.v)?.[i]?.v??""); return [...v].map(c=>/\d/.test(c)?String(R.int(0,9)):/[A-Z]/.test(c)?UP[R.int(0,25)]:/[a-z]/.test(c)?UP[R.int(0,25)].toLowerCase():c).join("");
+}
+function paramHTML(i){
+  const r=S.roles[i], p=S.params[i]||{};
+  if(r==="code") return `<div class="param"><span class="hint">${t("p_tpl")}</span>
+     <input type="text" class="tpl" data-i="${i}" value="${esc(p.tpl||"")}" spellcheck="false">
+     <span class="hint">${esc(t("p_tplh"))}</span>
+     <div class="mini"><input type="text" class="ex" data-i="${i}" placeholder="${esc(t("p_ex"))}"><button class="btn sm exb" data-i="${i}" title="${esc(t("p_ex"))}">${t("p_exbtn")}</button></div>
+     <button class="btn sm inf" data-i="${i}">${esc(t("p_infer"))}</button>
+     <div class="prev" id="prev${i}">${t("p_prev")} : <b>${esc(previewTpl(p.tpl,i))}</b></div></div>`;
+  if(r==="date") return `<div class="param"><span class="hint">${t("p_days")}</span><input type="number" class="days" data-i="${i}" min="1" value="${p.days||180}"></div>`;
+  if(r==="liste"){ const L=KIT.lists.find(l=>l.id===p.list); const need=new Set(body().map(x=>norm(x[i]?.v)).filter(Boolean)).size;
+    return `<div class="param"><span class="hint">${t("p_list")}</span><select class="lst" data-i="${i}"><option value=""></option>${listOptions(p.list)}</select>
+     <span class="hint">${esc(t("p_listneed")(headers()[i],need))}${L?" · "+esc(t("p_items")(L.items.length)):""}</span></div>`; }
+  if(r==="fixe") return `<div class="param"><span class="hint">${t("p_fixed")}</span><input type="text" class="fix" data-i="${i}" value="${esc(p.value??"")}"></div>`;
+  return "";
+}
+function roleSelect(i){
+  const R=t("roles"), G=t("rgroups"), groups={keep:["keep"],id:["civ","nom","prenom","code","tel","date"],adr:["rue","num","suite","compl","cp","ville"],mail:["mail"],cus:["liste","fixe","vider","texte"]};
+  return `<select class="role" data-i="${i}" aria-label="${esc(headers()[i])}">`+Object.entries(groups).map(([g,rs])=>`<optgroup label="${esc(G[g])}">${rs.map(r=>`<option value="${r}"${r===S.roles[i]?" selected":""}>${esc(R[r])}</option>`).join("")}</optgroup>`).join("")+`</select>`;
+}
+function renderCols(){
+  const H=headers(), B=body();
+  $("#cols").innerHTML=H.map((h,i)=>{ const smp=B.find(r=>r[i]&&r[i].v!=="")?.[i]?.v??""; const g=ROLE_GROUP[S.roles[i]]||"keep"; const s=S.src[i];
+    return `<div class="col r-${g}"><div class="hd"><span class="nm" title="${esc(h)}">${esc(h)}</span>
+      <span class="row" style="gap:6px">${s?`<span class="tag ${s}" title="${esc(t("srct")[s])}">${esc(t("src")[s])}</span>`:""}<span style="color:var(--muted);font-weight:400">${colLetter(i)}</span></span></div>
+    <div class="smp" title="${esc(smp)}">${esc(smp)||"·"}</div>${roleSelect(i)}${paramHTML(i)}</div>`;}).join("");
+  const C=$("#cols");
+  C.querySelectorAll(".role").forEach(s=>s.onchange=()=>{ const i=+s.dataset.i; S.roles[i]=s.value; S.src[i]="";
+    if(s.value==="code"&&S.params[i]?.tpl===undefined) S.params[i]={tpl:inferTpl(B.map(r=>r[i]?.v))};
+    if(s.value==="date"&&!S.params[i]?.days) S.params[i]={days:180};
+    renderCols(); });
+  const upd=i=>{ const el=$("#prev"+i); if(el) el.innerHTML=`${t("p_prev")} : <b>${esc(previewTpl(S.params[i]?.tpl,i))}</b>`; };
+  C.querySelectorAll(".tpl").forEach(x=>x.oninput=()=>{const i=+x.dataset.i; S.params[i]={...S.params[i],tpl:x.value}; upd(i);});
+  C.querySelectorAll(".exb").forEach(b=>b.onclick=()=>{const i=+b.dataset.i, ex=C.querySelector(`.ex[data-i="${i}"]`).value.trim(); if(!ex) return; S.params[i]={...S.params[i],tpl:exToTpl(ex)}; C.querySelector(`.tpl[data-i="${i}"]`).value=S.params[i].tpl; upd(i);});
+  C.querySelectorAll(".inf").forEach(b=>b.onclick=()=>{const i=+b.dataset.i; S.params[i]={...S.params[i],tpl:inferTpl(B.map(r=>r[i]?.v))}; C.querySelector(`.tpl[data-i="${i}"]`).value=S.params[i].tpl; upd(i);});
+  C.querySelectorAll(".days").forEach(x=>x.oninput=()=>{S.params[+x.dataset.i]={days:+x.value||180}});
+  C.querySelectorAll(".fix").forEach(x=>x.oninput=()=>{S.params[+x.dataset.i]={value:x.value}});
+  C.querySelectorAll(".lst").forEach(x=>x.onchange=()=>{ const i=+x.dataset.i;
+    if(x.value==="__new"){ const need=new Set(B.map(r=>norm(r[i]?.v)).filter(Boolean)).size; S.pendingAssign=i;
+      openBank({kind:"custom",name:H[i],count:Math.max(20,Math.ceil(need*1.3))}); x.value=S.params[i]?.list||""; return; }
+    S.params[i]={list:x.value}; renderCols(); });
+}
+async function loadFile(f){
+  $("#status").textContent=t("reading"); S.name=f.name.replace(/\.[^.]+$/,"");
+  try{
+    const buf=await f.arrayBuffer(); const u=new Uint8Array(buf,0,2);
+    if(u[0]===0x50&&u[1]===0x4b){
+      S.book=await readXlsx(buf);
+      const sel=$("#sheet"); sel.innerHTML=S.book.sheets.map((s,i)=>`<option value="${i}">${esc(s.name)}</option>`).join("");
+      $("#sheetWrap").classList.toggle("hidden",S.book.sheets.length<2);
+      S.sheetIdx=0; setData(await S.book.read(0),S.book.sheets[0].name);
+    } else { S.book=null; $("#sheetWrap").classList.add("hidden"); setData(parseDelimited(new TextDecoder().decode(buf)),S.name.slice(0,31)); }
+  }catch(e){ $("#status").innerHTML=`<span class="err">${t("badfile")}${esc(e.message)}</span>`; }
+}
+$("#sheet").onchange=async e=>{S.sheetIdx=+e.target.value; setData(await S.book.read(S.sheetIdx),S.book.sheets[S.sheetIdx].name)};
+$("#hrow").onchange=()=>{ if(S.raw) setData(S.raw,S.sheetName); };
+const drop=$("#drop"), fi=$("#file");
+drop.onclick=()=>fi.click(); drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}};
+fi.onchange=()=>fi.files[0]&&loadFile(fi.files[0]);
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0]; if(f) loadFile(f)});
+$("#pasteBtn").onclick=()=>{ const v=$("#paste").value; if(!v.trim()) return; S.book=null; S.name="colle"; $("#sheetWrap").classList.add("hidden"); setData(parseDelimited(v),"Feuille1"); };
+const newSeed=()=>{const w=["azur","mistral","olive","cigale","lavande","calanque","garrigue","figue","pinede","sirocco"];const a=crypto.getRandomValues(new Uint32Array(2));$("#seed").value=w[a[0]%w.length]+"-"+(a[1]%9000+1000)};
+$("#dice").onclick=newSeed;
+function getOpts(){
+  let a=+$("#cpmin").value||98500, b=+$("#cpmax").value||98900; if(a>b) [a,b]=[b,a];
+  return {seed:$("#seed").value||"graine",flavour:$("#flavour").value,cpMin:a,cpMax:b,ville:$("#villetxt").value.trim(),headers:headers()};
+}
+function saveProfile(){
+  const H=headers(), o=S.opts;
+  KIT.profiles[sigOf(H)]={name:S.name,date:today(),cols:H.map((h,i)=>({h,role:S.roles[i],params:S.params[i]||{}})),settings:{flavour:o.flavour,cpMin:o.cpMin,cpMax:o.cpMax,ville:o.ville,seed:o.seed}};
+  H.forEach((h,i)=>{ const k=normHeader(h); if(!k) return; if(S.roles[i]!=="keep"||S.auto[i]!=="keep") KIT.headers[k]={role:S.roles[i],params:S.params[i]||{}}; });
+  saveKit(); renderBank();
+}
+$("#run").onclick=()=>{
+  if(!S.raw) return;
+  if(!S.roles.some(r=>r!=="keep"&&r!=="civ")){ toast(t("c_noroles")); return; }
+  S.opts=getOpts(); S.res=pseudonymise(body(),S.roles,S.params,S.opts,KIT); S.page=0;
+  if(S.saveProf!==false) saveProfile();
+  renderResult();
+  $("#s4").classList.remove("hidden"); $("#s4").scrollIntoView({behavior:"smooth",block:"start"});
+};
+function renderResult(){
+  const res=S.res, H=headers();
+  S.checks=audit(res,H,S.opts,S.params);
+  const other=res.maps.code.size+res.maps.tel.size+res.maps.date.size+res.maps.liste.size;
+  const k=[[body().length,t("k_rows")],[res.maps.nom.size,t("k_nom")],[res.maps.prenom.size,t("k_pre")],[res.maps.city.size,t("k_city")],[res.maps.mail.size,t("k_mail")]];
+  if(other) k.push([other,t("k_other")]);
+  $("#kpis").innerHTML=k.map(([n,l])=>`<div class="kpi"><b>${n}</b><span>${l}</span></div>`).join("");
+  const ic={ok:"✓",warn:"!",bad:"✕"};
+  $("#checks").innerHTML=S.checks.map((c,ci)=>`<div class="ck ${c.s}"><span class="i">${ic[c.s]}</span><div>${esc(c.m)}${c.d?`<small>${esc(c.d)}</small>`:""}
+    ${c.act?`<button class="btn sm accent act" data-c="${ci}">${esc(t("c_poolbtn"))}</button>`:""}
+    ${c.leaks&&c.leaks.length?`<details class="leaks"><summary>${esc(t("c_leak2"))}</summary><div class="leaklist">${c.leaks.slice(0,300).map(l=>esc(t("leakline")(l.r+hRow()+2,H[l.c],l.v,l.t))).join("<br>")}</div></details>`:""}</div></div>`).join("");
+  $("#checks").querySelectorAll(".act").forEach(b=>b.onclick=()=>{ const a=S.checks[+b.dataset.c].act;
+    if(a.listId){ const i=S.roles.findIndex((r,j)=>r==="liste"&&S.params[j]?.list===a.listId); if(i>=0) S.pendingAssign=null; S.pendingList=a.listId; }
+    openBank(a); });
+  renderTable();
+}
+function renderTable(){
+  const res=S.res, H=headers(), B=body();
+  const cols=S.roles.map((r,i)=>r!=="keep"?i:-1).filter(i=>i>=0);
+  const f=norm($("#filter").value);
+  let ids=B.map((_,i)=>i);
+  if(f) ids=ids.filter(i=>cols.some(c=>norm(res.out[i][c].v).includes(f)||norm(B[i][c]?.v).includes(f)));
+  const per=25, pages=Math.max(1,Math.ceil(ids.length/per)); S.page=Math.min(S.page,pages-1);
+  const sl=ids.slice(S.page*per,S.page*per+per);
+  $("#tbl").innerHTML=`<thead><tr><th>#</th>${cols.map(c=>`<th>${esc(H[c])}</th>`).join("")}</tr></thead><tbody>`+
+    sl.map(i=>`<tr><td class="num">${i+hRow()+2}</td>${cols.map(c=>{const nv=res.out[i][c].v, ov=B[i][c]?.v??""; const ch=S.roles[c]!=="civ"&&String(ov)!==""&&String(ov)!==String(nv);
+      return `<td>${esc(nv)}${ch?`<span class="o">${esc(ov)}</span>`:""}</td>`}).join("")}</tr>`).join("")+"</tbody>";
+  $("#pg").textContent=ids.length?t("page")(S.page*per+1,Math.min(ids.length,S.page*per+per),ids.length):"0";
+  $("#tw").classList.toggle("hideorig",!$("#showOrig").checked);
+}
+$("#filter").oninput=()=>{S.page=0;renderTable()};
+$("#showOrig").onchange=renderTable;
+$("#prev").onclick=()=>{if(S.page>0){S.page--;renderTable()}};
+$("#next").onclick=()=>{S.page++;renderTable()};
+const fullOut=()=>[...S.raw.slice(0,hRow()+1),...S.res.out];
+function dl(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+const suffix=()=>"-pseudo-"+String(S.opts.seed).replace(/[^\w-]+/g,"");
+$("#dlx").onclick=()=>dl(xlsx(S.sheetName,fullOut(),hRow()),S.name+suffix()+".xlsx");
+$("#dlc").onclick=()=>dl(new Blob(["﻿"+delim(fullOut(),";")],{type:"text/csv;charset=utf-8"}),S.name+suffix()+".csv");
+async function copyText(txt){ try{ await navigator.clipboard.writeText(txt); }catch(e){ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); } }
+$("#cp").onclick=async()=>{ await copyText(delim(fullOut().slice(hRow()),"\t")); toast(t("copied")); };
+$("#dlm").onclick=()=>{
+  if(!confirm(t("keywarn"))) return;
+  const M=S.res.maps, mt=t("mt"), C=v=>({v:String(v??""),n:false});
+  const rows=[[C(t("m_type")),C(t("m_real")),C(t("m_fake"))]];
+  M.nom.forEach(x=>rows.push([C(mt.nom),C(x.real),C(x.fake)]));
+  M.prenom.forEach(x=>rows.push([C(mt.prenom+" ("+x.g+")"),C(x.real),C(x.fake)]));
+  M.code.forEach(x=>rows.push([C(mt.code+" · "+headers()[x.col]),C(x.real),C(x.fake)]));
+  M.tel.forEach(x=>rows.push([C(mt.tel),C(x.real),C(x.fake)]));
+  M.date.forEach(x=>rows.push([C(mt.date),C(x.real),C(x.fake)]));
+  M.city.forEach(x=>rows.push([C(mt.ville),C(x.real),C(x.cp+" "+x.ville)]));
+  M.rue.forEach(x=>rows.push([C(mt.rue),C(x.real),C([x.fake,x.suite].filter(Boolean).join(" "))]));
+  M.compl.forEach(x=>rows.push([C(mt.compl),C(x.real),C(x.fake)]));
+  M.mail.forEach(x=>rows.push([C(mt.mail),C(x.real),C(x.fake)]));
+  M.liste.forEach(x=>rows.push([C(mt.liste+" · "+x.list),C(x.real),C(x.fake)]));
+  dl(xlsx("Correspondances",rows,0),S.name+suffix()+"-CORRESPONDANCES.xlsx");
+};
+
+/* ===================== BANQUE ===================== */
+function renderBank(){
+  const fl=$("#flavour").value, B=POOLS[fl], K=t("kinds");
+  const added=k=>KIT.lists.filter(l=>l.kind===k&&(l.style==="mix"||l.style===fl)).reduce((a,l)=>a+l.items.length,0);
+  const core=[["nom",B.noms.length],["prenomF",B.f.length],["prenomM",B.m.length],["rue",B.types.length*B.streets.length],["ville","∞"]];
+  $("#banktiles").innerHTML=core.map(([k,n])=>`<div class="bt"><b>${n}</b><span class="nm">${esc(K[k])}</span><span class="meta">${esc(t("builtin"))} · ${fl.toUpperCase()}${added(k)?" · "+esc(t("added")(added(k))):""}</span></div>`).join("")+
+    KIT.lists.map(l=>`<div class="bt user"><b>${l.items.length}</b><span class="nm" title="${esc(l.name)}">${esc(l.name)}</span><span class="meta">${esc(K[l.kind]||l.kind)} · ${String(l.style||"").toUpperCase()}</span>
+      <span class="acts"><button class="btn sm" data-view="${l.id}">${esc(t("view"))}</button><button class="btn sm" data-del="${l.id}">${esc(t("del"))}</button></span>
+      <div class="viewlist hidden" id="v-${l.id}"></div></div>`).join("");
+  $("#banktiles").querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{const el=$("#v-"+b.dataset.view); const l=KIT.lists.find(x=>x.id===b.dataset.view); el.innerHTML=l.items.map(esc).join("<br>"); el.classList.toggle("hidden");});
+  $("#banktiles").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const l=KIT.lists.find(x=>x.id===b.dataset.del); if(!confirm(t("delq")(l.name))) return;
+    KIT.lists=KIT.lists.filter(x=>x!==l); saveKit(); renderBank(); if(S.raw) renderCols();});
+  const P=Object.entries(KIT.profiles);
+  $("#profiles").innerHTML=`<b>${esc(t("profs"))}</b>`+(P.length?P.map(([sig,p])=>`<div><span>${esc(p.name)} · ${esc(p.date)} · ${p.cols.length} col.</span><button class="btn sm" data-prof="${esc(sig)}">${esc(t("del"))}</button></div>`).join(""):`<span class="hint">${esc(t("noprof"))}</span>`);
+  $("#profiles").querySelectorAll("[data-prof]").forEach(b=>b.onclick=()=>{ const p=KIT.profiles[b.dataset.prof]; if(!confirm(t("profq")(p.name))) return; delete KIT.profiles[b.dataset.prof]; saveKit(); renderBank(); });
+}
+$("#flavour").onchange=()=>{ renderBank(); $("#bstyle").value=$("#flavour").value; };
+$("#bkind").onchange=()=>$("#bnameWrap").classList.toggle("hidden",$("#bkind").value!=="custom");
+function openBank(a){
+  $("#bkind").value=a.kind; $("#bnameWrap").classList.toggle("hidden",a.kind!=="custom");
+  if(a.name) $("#bname").value=a.name; if(a.count) $("#bcount").value=a.count;
+  $("#bstyle").value=a.kind==="custom"?"fr":$("#flavour").value;
+  buildPrompt(); $("#s5").scrollIntoView({behavior:"smooth",block:"start"}); $("#banswer").value=""; $("#breport").innerHTML="";
+}
+function buildPrompt(){
+  const P=t("prompt"), kind=$("#bkind").value, n=Math.max(5,+$("#bcount").value||100), style=$("#bstyle").value, ctx=$("#bctx").value.trim(), ex=$("#bex").value.trim();
+  const name=$("#bname").value.trim()||t("autoName");
+  const desc=kind==="custom"?P.desc.custom(name):P.desc[kind];
+  const L=[P.intro,"",P.task(n,desc),P.style((kind==="custom"?P.stc:P.st)[style])];
+  if(ctx) L.push(P.ctx(ctx)); if(ex) L.push(P.ex(ex));
+  L.push("",P.rules,"- "+P.r1,"- "+P.r2,"- "+P.r3,"- "+P.r4,"- "+P.kr[kind]); if(kind!=="custom") L.push("- "+P.r5);
+  L.push("",P.out);
+  $("#promptOut").value=L.join("\n");
+}
+$("#bgen").onclick=buildPrompt;
+$("#bcopy").onclick=async()=>{ if(!$("#promptOut").value) buildPrompt(); await copyText($("#promptOut").value); toast(t("pcopied")); };
+function parseAnswer(txt){
+  return txt.replace(/```[a-z]*\n?/gi,"\n").split(/\r?\n/).map(l=>l.trim()
+    .replace(/^(?:[-*•·–]|\d+[.)])\s+/,"").replace(/^["'«“‘]\s*|\s*["'»”’]$/g,"").replace(/[;,]$/,"").trim())
+    .filter(l=>l&&l.length<=90&&!/:$/.test(l));
+}
+function fileRealSets(){
+  const all=new Set(), tok=new Set();
+  if(!S.raw) return {all,tok};
+  body().forEach(r=>r.forEach((c,i)=>{ const v=norm(c?.v); if(!v) return; all.add(v); if(S.roles[i]==="nom"||S.roles[i]==="prenom") toks(c.v).forEach(x=>tok.add(x)); }));
+  return {all,tok};
+}
+$("#badd").onclick=()=>{
+  const items=parseAnswer($("#banswer").value); if(!items.length){ $("#breport").innerHTML=esc(t("rep_none")); return; }
+  const kind=$("#bkind").value, style=$("#bstyle").value; let name=$("#bname").value.trim();
+  if(kind==="custom"&&!name){ $("#breport").innerHTML=`<span class="err">${esc(t("rep_name"))}</span>`; return; }
+  let L=kind==="custom"?KIT.lists.find(l=>l.kind==="custom"&&norm(l.name)===norm(name)):KIT.lists.find(l=>l.kind===kind&&l.style===style);
+  if(!L){ L={id:uid(),kind,style,name:kind==="custom"?name:`${t("kinds")[kind]} (${style.toUpperCase()})`,items:[]}; KIT.lists.push(L); }
+  const seen=new Set(L.items.map(norm)), {all,tok}=fileRealSets(); let a=0,d=0,r=0;
+  for(const it of items){ const n=norm(it);
+    if(seen.has(n)){d++;continue;}
+    if(all.has(n)||((kind==="nom"||kind==="prenomF"||kind==="prenomM")&&toks(it).some(x=>tok.has(x)))){r++;continue;}
+    seen.add(n); L.items.push(it); a++; }
+  if(!L.items.length) KIT.lists=KIT.lists.filter(x=>x!==L);
+  saveKit(); $("#breport").innerHTML=t("rep_ok")(a,d,r);
+  if(S.pendingAssign!==null&&kind==="custom"&&L.items.length){ S.params[S.pendingAssign]={list:L.id}; S.pendingAssign=null; }
+  renderBank(); if(S.raw) renderCols();
+};
+$("#kexp").onclick=()=>{ dl(new Blob([JSON.stringify(KIT,null,1)],{type:"application/json"}),`pseudonymiseur-kit-${today()}.json`); toast(t("kit_saved")); };
+$("#kimp").onclick=()=>$("#kfile").click();
+$("#kfile").onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+  try{ const k=JSON.parse(await f.text()); if(!k||(!k.lists&&!k.profiles)) throw 0; KIT=mergeKit(KIT,k); saveKit(); renderBank(); if(S.raw){ runDetection(true); renderProfile(); renderCols(); }
+    toast(t("kit_imported")((k.lists||[]).length,Object.keys(k.profiles||{}).length)); }catch(err){ toast(t("kit_bad")); }
+  e.target.value=""; };
+$("#kapp").onclick=()=>{
+  const open='<scr'+'ipt type="application/json" id="kit">', close='</scr'+'ipt>';
+  const a=PRISTINE.indexOf(open), b=PRISTINE.indexOf(close,a);
+  if(a<0||b<0) return;
+  const html=PRISTINE.slice(0,a+open.length)+JSON.stringify(KIT).replace(/</g,"\\u003c")+PRISTINE.slice(b);
+  dl(new Blob([html],{type:"text/html"}),"pseudonymiseur-avec-kit.html"); toast(t("app_dl"));
+};
+
+try{const l=localStorage.getItem("pseudo-lang"); if(l==="en"||l==="fr") LANG=l;}catch(e){}
+loadKit(); buildDict(); newSeed(); applyLang();
+</script>
+</body>
+</html>
